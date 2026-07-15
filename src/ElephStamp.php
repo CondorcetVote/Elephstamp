@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CondorcetVote\ElephStamp;
 
+use CondorcetVote\ElephStamp\Attestation\PendingAttestation;
 use CondorcetVote\ElephStamp\Merkle\MerkleTree;
 use CondorcetVote\ElephStamp\Random\{CryptoRandomSource, DeterministicRandomSource, RandomSource};
 use CondorcetVote\ElephStamp\Calendar\{CalendarClient, CalendarWhitelist, FakeCalendarClient, HttpCalendarClient};
@@ -67,15 +68,19 @@ final class ElephStamp
      */
     private readonly array $calendarUrls;
 
+    private readonly int $requiredCalendars;
+
     /**
      * @param list<string>|null $calendarUrls      calendars to submit to (defaults to {@see DEFAULT_CALENDAR_URLS})
-     * @param int               $requiredCalendars minimum number of calendars that must accept a stamp (the "m" of m-of-n)
+     * @param int|null          $requiredCalendars minimum number of calendars that must accept a stamp (the "m" of
+     *                                             m-of-n); defaults to 2 — like the reference client — or to 1 when
+     *                                             a single calendar is configured
      * @param list<string>|null $upgradeWhitelist   host patterns an upgrade may contact (defaults to {@see DEFAULT_UPGRADE_WHITELIST}); pass your own when using private calendars
      */
     public function __construct(
         ?CalendarClient $calendarClient = null,
         ?array $calendarUrls = null,
-        private readonly int $requiredCalendars = 1,
+        ?int $requiredCalendars = null,
         ?HashOperation $hashOperation = null,
         ?RandomSource $randomSource = null,
         ?array $upgradeWhitelist = null,
@@ -85,6 +90,7 @@ final class ElephStamp
         $this->hashOperation = $hashOperation ?? new Sha256;
         $this->randomSource = $randomSource ?? new CryptoRandomSource;
         $this->upgradeWhitelist = new CalendarWhitelist($upgradeWhitelist ?? self::DEFAULT_UPGRADE_WHITELIST);
+        $this->requiredCalendars = $requiredCalendars ?? min(2, \count($this->calendarUrls));
 
         if (empty($this->calendarUrls)) {
             throw new InvalidInputException('At least one calendar URL is required');
@@ -270,6 +276,16 @@ final class ElephStamp
         // enough others succeed. The threshold is enforced below.
         foreach ($this->calendarClient->submit($this->calendarUrls, $merkleTip->msg) as $response) {
             if ($response->timestamp !== null) {
+                // An honest calendar always answers a submission with pending
+                // attestations only: Bitcoin anchoring happens later, through
+                // upgrade(). Anything else is a forgery that would fake an
+                // instantly-complete receipt.
+                if (!self::onlyPendingAttestations($response->timestamp)) {
+                    $errors[] = $response->calendarUrl . ': submission response contained a non-pending attestation';
+
+                    continue;
+                }
+
                 $merkleTip->merge($response->timestamp);
                 ++$merged;
             } elseif ($response->error !== null) {
@@ -285,5 +301,16 @@ final class ElephStamp
                 empty($errors) ? '' : ' (' . implode('; ', $errors) . ')',
             ));
         }
+    }
+
+    private static function onlyPendingAttestations(Timestamp $timestamp): bool
+    {
+        foreach ($timestamp->allAttestations() as ['attestation' => $attestation]) {
+            if (!$attestation instanceof PendingAttestation) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

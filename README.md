@@ -214,7 +214,8 @@ $client = new ElephStamp(
 
 Calendar URLs must be unique and use **https** (a plaintext connection would
 let a network attacker inject forged responses); the same goes for whitelist
-patterns.
+patterns. When `requiredCalendars` is omitted it defaults to **2** — like the
+reference client — or to 1 when a single calendar is configured.
 
 ### Upgrade whitelist (security)
 

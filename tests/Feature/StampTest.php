@@ -228,6 +228,66 @@ it('reports no change when a completed receipt is upgraded again', function (): 
         ->and($receipt->toBytes())->toBe($bytes);
 });
 
+it('rejects a forged non-pending attestation in a submission response', function (): void {
+    $client = new ElephStamp(
+        calendarClient: new class implements CalendarClient {
+            public function submit(array $calendarUrls, string $digest): array
+            {
+                return array_map(static function (string $url) use ($digest): CalendarResponse {
+                    // A hostile calendar claiming an instant Bitcoin anchor.
+                    $timestamp = new Timestamp($digest);
+                    $timestamp->addAttestation(new BitcoinAttestation(1));
+
+                    return CalendarResponse::success($url, $timestamp);
+                }, $calendarUrls);
+            }
+
+            public function getTimestamps(array $requests): array
+            {
+                return [];
+            }
+        },
+        calendarUrls: ['https://a.example'],
+        randomSource: new DeterministicRandomSource,
+    );
+
+    $client->stamp(FileToStamp::fromContent('target'));
+})->throws(StampingException::class, 'non-pending attestation');
+
+it('requires two calendars by default, one when a single calendar is configured', function (): void {
+    // 1 accepting calendar out of 4 defaults: below the default 2-of-n threshold.
+    $oneOfMany = new ElephStamp(
+        calendarClient: new class implements CalendarClient {
+            public function submit(array $calendarUrls, string $digest): array
+            {
+                return array_map(static function (string $url) use ($digest): CalendarResponse {
+                    if ($url !== 'https://a.example') {
+                        return CalendarResponse::failure($url, new CalendarException('down'));
+                    }
+
+                    $timestamp = new Timestamp($digest);
+                    $timestamp->addAttestation(new PendingAttestation($url));
+
+                    return CalendarResponse::success($url, $timestamp);
+                }, $calendarUrls);
+            }
+
+            public function getTimestamps(array $requests): array
+            {
+                return [];
+            }
+        },
+        calendarUrls: ['https://a.example', 'https://b.example', 'https://c.example', 'https://d.example'],
+        randomSource: new DeterministicRandomSource,
+    );
+
+    expect(static fn(): Receipt => $oneOfMany->stamp(FileToStamp::fromContent('x')))
+        ->toThrow(StampingException::class, 'required 2');
+
+    // A single-calendar setup still works without an explicit threshold.
+    expect(ElephStamp::fake()->stamp(FileToStamp::fromContent('x'))->isPending())->toBeTrue();
+});
+
 it('rejects duplicate calendar URLs', function (): void {
     new ElephStamp(calendarUrls: ['https://a.example', 'https://a.example/'], requiredCalendars: 2);
 })->throws(InvalidInputException::class, 'unique');

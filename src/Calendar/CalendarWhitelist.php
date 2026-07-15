@@ -48,8 +48,10 @@ final class CalendarWhitelist
             return false;
         }
 
-        $scheme = $target['scheme'] ?? '';
-        $host = $target['host'] ?? '';
+        // Scheme and host are case-insensitive (RFC 3986); a legitimate proof
+        // with unusual casing must not become silently un-upgradable.
+        $scheme = strtolower($target['scheme'] ?? '');
+        $host = strtolower($target['host'] ?? '');
         $path = rtrim($target['path'] ?? '', '/');
 
         foreach ($this->patterns as $pattern) {
@@ -60,9 +62,13 @@ final class CalendarWhitelist
             }
 
             if (
-                $scheme === ($allowed['scheme'] ?? '')
+                $scheme === strtolower($allowed['scheme'] ?? '')
+                // An explicit port must be whitelisted explicitly: without
+                // this, a hostile proof could target any port of a trusted
+                // host.
+                && ($target['port'] ?? null) === ($allowed['port'] ?? null)
                 && $path === rtrim($allowed['path'] ?? '', '/')
-                && fnmatch($allowed['host'] ?? '', $host)
+                && fnmatch(strtolower($allowed['host'] ?? ''), $host)
             ) {
                 return true;
             }
