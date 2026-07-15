@@ -1,0 +1,91 @@
+<?php
+
+declare(strict_types=1);
+
+namespace CondorcetVote\ElephStamp\Operation;
+
+use CondorcetVote\ElephStamp\Exception\SerializationException;
+use CondorcetVote\ElephStamp\Serialization\Deserializer;
+
+/**
+ * A cryptographic hash operation.
+ *
+ * Unlike other operations these produce a fixed-length result regardless of
+ * input size, which is what allows a whole file to be hashed as a stream.
+ * They are also the only operations valid as the file-hash operation of a
+ * detached timestamp.
+ */
+abstract class HashOperation extends UnaryOperation
+{
+    /**
+     * Length of the digest this operation produces, in bytes.
+     */
+    abstract public function digestLength(): int;
+
+    /**
+     * Name of the algorithm as understood by PHP's {@see hash()} family.
+     */
+    abstract protected function algorithm(): string;
+
+    /**
+     * Hash a whole in-memory payload.
+     *
+     * Unlike {@see Operation::apply()} this is not bound by the proof message
+     * length limits: it hashes the original file content, which can be large.
+     */
+    final public function hashData(string $data): string
+    {
+        return hash($this->algorithm(), $data, binary: true);
+    }
+
+    /**
+     * Hash a stream from its current position to its end, in bounded memory.
+     *
+     * @param resource $stream
+     */
+    final public function hashStream($stream): string
+    {
+        $context = hash_init($this->algorithm());
+        hash_update_stream($context, $stream);
+
+        return hash_final($context, binary: true);
+    }
+
+    /**
+     * Hash a sequence of chunks incrementally, in bounded memory.
+     *
+     * @param iterable<string> $chunks
+     */
+    final public function hashChunks(iterable $chunks): string
+    {
+        $context = hash_init($this->algorithm());
+
+        foreach ($chunks as $chunk) {
+            hash_update($context, $chunk);
+        }
+
+        return hash_final($context, binary: true);
+    }
+
+    protected function compute(string $message): string
+    {
+        return $this->hashData($message);
+    }
+
+    /**
+     * Read a cryptographic hash operation; reject non-hash operations.
+     *
+     * Used for the file-hash operation field of a detached timestamp, which
+     * must be a cryptographic hash.
+     */
+    final public static function deserializeHash(Deserializer $deserializer): self
+    {
+        $operation = Operation::deserialize($deserializer);
+
+        if (!$operation instanceof self) {
+            throw new SerializationException(\sprintf('Expected a cryptographic hash operation, got %s', $operation::class));
+        }
+
+        return $operation;
+    }
+}

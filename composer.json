@@ -1,0 +1,54 @@
+{
+    "name": "condorcet-vote/elephstamp",
+    "description": "Modern, object-oriented PHP library for OpenTimestamps: register timestamp proofs with calendar servers and collect the completed .ots certification.",
+    "type": "library",
+    "keywords": ["opentimestamps", "timestamp", "ots", "bitcoin", "proof", "notary", "certification"],
+    "require": {
+        "php": "^8.5",
+        "ext-mbstring": "*",
+        "symfony/http-client": "^8.1"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.7",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.2",
+        "julien-boudry/php-reference": "^0.7.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "CondorcetVote\\ElephStamp\\": "src/"
+        }
+    },
+    "archive": {
+        "exclude": [
+            "/tests",
+            "/docs",
+            "/.gitattributes",
+            "/.gitignore",
+            "/.php-cs-fixer.dist.php",
+            "/phpstan.neon.dist",
+            "/phpunit.xml.dist",
+            "/linter_rules.json",
+            "/reference.php",
+            "/AGENTS.md"
+        ]
+    },
+    "scripts": {
+        "test": "pest",
+        "phpstan": "phpstan analyse",
+        "linter": "php-cs-fixer fix",
+        "document": "php-reference"
+    },
+    "authors": [
+        {
+            "name": "Julien Boudry",
+            "email": "julien@condorcet.io"
+        }
+    ],
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}

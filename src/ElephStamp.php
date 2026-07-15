@@ -1,0 +1,254 @@
+<?php
+
+declare(strict_types=1);
+
+namespace CondorcetVote\ElephStamp;
+
+use CondorcetVote\ElephStamp\Merkle\MerkleTree;
+use CondorcetVote\ElephStamp\Random\{CryptoRandomSource, DeterministicRandomSource, RandomSource};
+use CondorcetVote\ElephStamp\Calendar\{CalendarClient, CalendarWhitelist, FakeCalendarClient, HttpCalendarClient};
+use CondorcetVote\ElephStamp\Exception\{InvalidInputException, StampingException};
+use CondorcetVote\ElephStamp\Operation\{Append, HashOperation, Sha256};
+
+/**
+ * The library entry point: submit timestamp requests to calendar servers and
+ * refresh receipts as they get confirmed.
+ *
+ * Verification against the Bitcoin blockchain is deliberately out of scope.
+ */
+final class ElephStamp
+{
+    /**
+     * The public aggregator calendars used by default.
+     *
+     * @var list<string>
+     */
+    public const array DEFAULT_CALENDAR_URLS = [
+        'https://a.pool.opentimestamps.org',
+        'https://b.pool.opentimestamps.org',
+        'https://a.pool.eternitywall.com',
+        'https://ots.btc.catallaxy.com',
+    ];
+
+    /**
+     * Host patterns an upgrade is allowed to contact by default.
+     *
+     * These are the calendars operated by the known OpenTimestamps operators.
+     * They guard against a hostile `.ots` pointing upgrades at arbitrary hosts.
+     *
+     * @var list<string>
+     */
+    public const array DEFAULT_UPGRADE_WHITELIST = [
+        'https://*.calendar.opentimestamps.org',
+        'https://*.calendar.eternitywall.com',
+        'https://*.calendar.catallaxy.com',
+    ];
+
+    /**
+     * Calendar URL used by the fake client.
+     */
+    public const string FAKE_CALENDAR_URL = 'https://fake.calendar.elephstamp';
+
+    /**
+     * Length of the per-file privacy nonce, in bytes.
+     */
+    private const int NONCE_LENGTH = 16;
+
+    private readonly CalendarClient $calendarClient;
+
+    private readonly HashOperation $hashOperation;
+
+    private readonly RandomSource $randomSource;
+
+    private readonly CalendarWhitelist $upgradeWhitelist;
+
+    /**
+     * @var list<string>
+     */
+    private readonly array $calendarUrls;
+
+    /**
+     * @param list<string>|null $calendarUrls      calendars to submit to (defaults to {@see DEFAULT_CALENDAR_URLS})
+     * @param int               $requiredCalendars minimum number of calendars that must accept a stamp (the "m" of m-of-n)
+     * @param list<string>|null $upgradeWhitelist   host patterns an upgrade may contact (defaults to {@see DEFAULT_UPGRADE_WHITELIST}); pass your own when using private calendars
+     */
+    public function __construct(
+        ?CalendarClient $calendarClient = null,
+        ?array $calendarUrls = null,
+        private readonly int $requiredCalendars = 1,
+        ?HashOperation $hashOperation = null,
+        ?RandomSource $randomSource = null,
+        ?array $upgradeWhitelist = null,
+    ) {
+        $this->calendarClient = $calendarClient ?? new HttpCalendarClient;
+        $this->calendarUrls = $calendarUrls ?? self::DEFAULT_CALENDAR_URLS;
+        $this->hashOperation = $hashOperation ?? new Sha256;
+        $this->randomSource = $randomSource ?? new CryptoRandomSource;
+        $this->upgradeWhitelist = new CalendarWhitelist($upgradeWhitelist ?? self::DEFAULT_UPGRADE_WHITELIST);
+
+        if (empty($this->calendarUrls)) {
+            throw new InvalidInputException('At least one calendar URL is required');
+        }
+
+        if ($this->requiredCalendars < 1 || $this->requiredCalendars > \count($this->calendarUrls)) {
+            throw new InvalidInputException(\sprintf(
+                'requiredCalendars must be between 1 and the number of calendars (%d); got %d',
+                \count($this->calendarUrls),
+                $this->requiredCalendars,
+            ));
+        }
+    }
+
+    /**
+     * Build a fully offline, deterministic client for tests and local environments.
+     *
+     * Pass the same {@see FakeCalendarClient} to several calls to share its
+     * confirmation state, or read it back with {@see fakeCalendar()}.
+     */
+    public static function fake(?FakeCalendarClient $calendar = null): self
+    {
+        return new self(
+            calendarClient: $calendar ?? new FakeCalendarClient,
+            calendarUrls: [self::FAKE_CALENDAR_URL],
+            randomSource: new DeterministicRandomSource,
+            upgradeWhitelist: [self::FAKE_CALENDAR_URL],
+        );
+    }
+
+    /**
+     * The fake calendar backing this client, for driving its lifecycle in tests.
+     *
+     * @throws InvalidInputException if this client is not in fake mode
+     */
+    public function fakeCalendar(): FakeCalendarClient
+    {
+        if (!$this->calendarClient instanceof FakeCalendarClient) {
+            throw new InvalidInputException('This client is not backed by a fake calendar');
+        }
+
+        return $this->calendarClient;
+    }
+
+    /**
+     * Timestamp a single file.
+     *
+     * @throws StampingException if too few calendars accept the request
+     */
+    public function stamp(FileToStamp $file): Receipt
+    {
+        return $this->stampMany($file)[0];
+    }
+
+    /**
+     * Timestamp several files at once, sharing a single calendar submission.
+     *
+     * All files are bound to one merkle tree, so a single commitment covers
+     * them; each file still gets its own independent receipt.
+     *
+     *
+     * @throws StampingException if too few calendars accept the request
+     *
+     * @return list<Receipt>
+     */
+    public function stampMany(FileToStamp ...$files): array
+    {
+        if (empty($files)) {
+            throw new InvalidInputException('At least one file is required');
+        }
+
+        $fileTimestamps = [];
+        $merkleLeaves = [];
+
+        foreach ($files as $file) {
+            $fileTimestamp = new Timestamp($file->digest($this->hashOperation));
+            $fileTimestamps[] = $fileTimestamp;
+            $merkleLeaves[] = $this->merkleLeaf($fileTimestamp, $file->useNonce);
+        }
+
+        $merkleTip = MerkleTree::build($merkleLeaves);
+
+        $this->submitToCalendars($merkleTip);
+
+        return array_map(
+            fn(Timestamp $timestamp): Receipt => new Receipt(new DetachedTimestampFile($this->hashOperation, $timestamp)),
+            $fileTimestamps,
+        );
+    }
+
+    /**
+     * Query the calendars for confirmations and merge them into the receipt.
+     *
+     * Performs a single polling pass and returns whether anything changed; call
+     * it again later to keep polling a still-pending receipt.
+     */
+    public function upgrade(Receipt $receipt): bool
+    {
+        // Only contact calendars whose URI is whitelisted: an untrusted `.ots`
+        // must not be able to point us at arbitrary hosts.
+        $pending = array_values(array_filter(
+            $receipt->detachedTimestampFile()->timestamp->findPending(),
+            fn(array $entry): bool => $this->upgradeWhitelist->allows($entry['attestation']->uri),
+        ));
+
+        if (empty($pending)) {
+            return false;
+        }
+
+        $requests = array_map(
+            static fn(array $entry): array => ['url' => $entry['attestation']->uri, 'commitment' => $entry['node']->msg],
+            $pending,
+        );
+
+        $changed = false;
+
+        // Responses come back aligned with $requests (and thus $pending); a
+        // calendar that is unreachable or still has nothing simply yields no
+        // timestamp and is skipped, never aborting the pass.
+        foreach ($this->calendarClient->getTimestamps($requests) as $index => $response) {
+            if ($response->timestamp !== null) {
+                $pending[$index]['node']->merge($response->timestamp);
+                $changed = true;
+            }
+        }
+
+        return $changed;
+    }
+
+    private function merkleLeaf(Timestamp $fileTimestamp, bool $useNonce): Timestamp
+    {
+        if (!$useNonce) {
+            return $fileTimestamp;
+        }
+
+        $nonced = $fileTimestamp->addOp(new Append($this->randomSource->bytes(self::NONCE_LENGTH)));
+
+        return $nonced->addOp(new Sha256);
+    }
+
+    private function submitToCalendars(Timestamp $merkleTip): void
+    {
+        $merged = 0;
+        $errors = [];
+
+        // All calendars are contacted concurrently; each response is either a
+        // pending timestamp we merge, or a failure we tolerate as long as
+        // enough others succeed. The threshold is enforced below.
+        foreach ($this->calendarClient->submit($this->calendarUrls, $merkleTip->msg) as $response) {
+            if ($response->timestamp !== null) {
+                $merkleTip->merge($response->timestamp);
+                ++$merged;
+            } elseif ($response->error !== null) {
+                $errors[] = $response->calendarUrl . ': ' . $response->error->getMessage();
+            }
+        }
+
+        if ($merged < $this->requiredCalendars) {
+            throw new StampingException(\sprintf(
+                'Only %d of the required %d calendars accepted the timestamp%s',
+                $merged,
+                $this->requiredCalendars,
+                empty($errors) ? '' : ' (' . implode('; ', $errors) . ')',
+            ));
+        }
+    }
+}
