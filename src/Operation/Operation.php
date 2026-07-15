@@ -64,6 +64,18 @@ abstract class Operation
     }
 
     /**
+     * Whether this library can compute the operation's result.
+     *
+     * A non-computable operation (keccak256) still parses and serializes, but
+     * the subtree below it carries unknown messages: it cannot be verified,
+     * upgraded, or extended.
+     */
+    public function isComputable(): bool
+    {
+        return true;
+    }
+
+    /**
      * Key used to order operations deterministically within a timestamp.
      *
      * Ordering is by tag byte first, then by argument bytes, which matches the

@@ -22,13 +22,17 @@ final class DetachedTimestampFile
 
     public const int MAJOR_VERSION = 1;
 
+    private readonly string $fileDigest;
+
     public function __construct(
         public readonly HashOperation $fileHashOperation,
         public readonly Timestamp $timestamp,
     ) {
-        if (\strlen($timestamp->msg) !== $fileHashOperation->digestLength()) {
+        if ($timestamp->msg === null || \strlen($timestamp->msg) !== $fileHashOperation->digestLength()) {
             throw new SerializationException('Timestamp message length does not match the file-hash digest length');
         }
+
+        $this->fileDigest = $timestamp->msg;
     }
 
     /**
@@ -36,7 +40,7 @@ final class DetachedTimestampFile
      */
     public function fileDigest(): string
     {
-        return $this->timestamp->msg;
+        return $this->fileDigest;
     }
 
     public function serialize(Serializer $serializer): void
@@ -44,7 +48,7 @@ final class DetachedTimestampFile
         $serializer->writeBytes(self::HEADER_MAGIC);
         $serializer->writeUint8(self::MAJOR_VERSION);
         $this->fileHashOperation->serialize($serializer);
-        $serializer->writeBytes($this->timestamp->msg);
+        $serializer->writeBytes($this->fileDigest);
         $this->timestamp->serialize($serializer);
     }
 

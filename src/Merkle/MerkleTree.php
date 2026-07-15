@@ -23,6 +23,10 @@ final class MerkleTree
      */
     public static function concatenateThenSha256(Timestamp $left, Timestamp $right): Timestamp
     {
+        if ($left->msg === null || $right->msg === null) {
+            throw new InvalidInputException('Cannot merkelize a timestamp whose message is unknown');
+        }
+
         $rightPrepended = $right->addOp(new Prepend($left->msg));
 
         // The left branch reaches the same concatenated message; point its

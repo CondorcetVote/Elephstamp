@@ -117,6 +117,11 @@ be recomputed without the `.ots` — disable it:
 FileToStamp::fromPath('public-release.zip')->withoutNonce();
 ```
 
+Note that inside a `stampMany()` batch, a file stamped without nonce also
+exposes its plain digest in the **sibling receipts** of the batch (the merkle
+tree embeds each leaf's message into its neighbours' proofs) — not only to the
+calendars.
+
 ### Stamping several files at once
 
 `stampMany()` binds all files into a single merkle tree, so one calendar
@@ -207,6 +212,10 @@ $client = new ElephStamp(
 );
 ```
 
+Calendar URLs must be unique and use **https** (a plaintext connection would
+let a network attacker inject forged responses); the same goes for whitelist
+patterns.
+
 ### Upgrade whitelist (security)
 
 An `.ots` proof embeds the calendar URIs to poll when upgrading. Because a proof
@@ -228,8 +237,10 @@ credentials are always rejected.
 
 ### Customising the HTTP client
 
-The default transport is the Symfony HTTP client. Inject your own configured
-instance (timeouts, proxy, retries, ...) when needed:
+The default transport is the Symfony HTTP client, hardened for calendar
+traffic: redirects are never followed, responses are capped at 10 kB, and
+requests time out after 10 s of silence (30 s in total). Tune the timeouts, or
+inject your own configured instance (proxy, retries, ...) when needed:
 
 ```php
 use CondorcetVote\ElephStamp\Calendar\HttpCalendarClient;
@@ -237,7 +248,9 @@ use CondorcetVote\ElephStamp\ElephStamp;
 use Symfony\Component\HttpClient\HttpClient;
 
 $calendarClient = new HttpCalendarClient(
-    HttpClient::create(['timeout' => 10]),
+    HttpClient::create(['proxy' => 'http://proxy.internal:3128']),
+    timeout: 5.0,       // idle timeout, seconds
+    maxDuration: 15.0,  // hard cap per request, seconds
 );
 
 $client = new ElephStamp(calendarClient: $calendarClient);

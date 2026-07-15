@@ -34,9 +34,15 @@ final class HttpCalendarClient implements CalendarClient
 
     private readonly HttpClientInterface $httpClient;
 
+    /**
+     * @param float $timeout     idle timeout in seconds: how long a calendar may go silent
+     * @param float $maxDuration hard cap in seconds on a whole request, however slowly the calendar drips bytes
+     */
     public function __construct(
         ?HttpClientInterface $httpClient = null,
         private readonly string $userAgent = 'ElephStamp',
+        private readonly float $timeout = 10.0,
+        private readonly float $maxDuration = 30.0,
     ) {
         $this->httpClient = $httpClient ?? HttpClient::create();
     }
@@ -83,19 +89,26 @@ final class HttpCalendarClient implements CalendarClient
     private function dispatch(array $requests, bool $allowNotFound): array
     {
         $responses = [];
+        $failures = [];
 
         foreach ($requests as $index => $request) {
-            $responses[$index] = $this->httpClient->request(
-                $request['method'],
-                $this->endpoint($request['url'], $request['path']),
-                $this->requestOptions($request['options']),
-            );
+            try {
+                $responses[$index] = $this->httpClient->request(
+                    $request['method'],
+                    $this->endpoint($request['url'], $request['path']),
+                    $this->requestOptions($request['options']),
+                );
+            } catch (HttpClientException $exception) {
+                // An invalid URL (or similar) must not abort the batch: it is
+                // this calendar's failure, the others still get resolved.
+                $failures[$index] = CalendarResponse::failure($request['url'], new CalendarException(\sprintf('Calendar %s: %s', $request['url'], $exception->getMessage()), previous: $exception));
+            }
         }
 
         $results = [];
 
         foreach ($requests as $index => $request) {
-            $results[] = $this->resolve($request['url'], $responses[$index], $request['expectedMsg'], $allowNotFound);
+            $results[] = $failures[$index] ?? $this->resolve($request['url'], $responses[$index], $request['expectedMsg'], $allowNotFound);
         }
 
         return $results;
@@ -107,19 +120,25 @@ final class HttpCalendarClient implements CalendarClient
             $status = $response->getStatusCode();
 
             if ($allowNotFound && $status === 404) {
+                $response->cancel();
+
                 return CalendarResponse::notFound($calendarUrl);
             }
 
             if ($status !== 200) {
+                $response->cancel();
+
                 return CalendarResponse::failure($calendarUrl, new CalendarException(\sprintf('Calendar %s returned unexpected status %d', $calendarUrl, $status)));
             }
 
-            $body = $response->getContent(throw: false);
+            $body = $this->readBody($response);
         } catch (HttpClientException $exception) {
+            $response->cancel();
+
             return CalendarResponse::failure($calendarUrl, new CalendarException(\sprintf('Calendar %s: %s', $calendarUrl, $exception->getMessage()), previous: $exception));
         }
 
-        if (\strlen($body) > self::MAX_RESPONSE_BYTES) {
+        if ($body === null) {
             return CalendarResponse::failure($calendarUrl, new CalendarException(\sprintf('Calendar %s response exceeded the size limit', $calendarUrl)));
         }
 
@@ -128,6 +147,31 @@ final class HttpCalendarClient implements CalendarClient
         } catch (SerializationException $exception) {
             return CalendarResponse::failure($calendarUrl, $exception);
         }
+    }
+
+    /**
+     * Read the response body incrementally, aborting once it exceeds the cap.
+     *
+     * Buffering the whole body before checking its size would let a hostile
+     * calendar exhaust memory with an endless chunked response.
+     *
+     * @return string|null null when the body exceeded MAX_RESPONSE_BYTES
+     */
+    private function readBody(ResponseInterface $response): ?string
+    {
+        $body = '';
+
+        foreach ($this->httpClient->stream($response) as $chunk) {
+            $body .= $chunk->getContent();
+
+            if (\strlen($body) > self::MAX_RESPONSE_BYTES) {
+                $response->cancel();
+
+                return null;
+            }
+        }
+
+        return $body;
     }
 
     /**
@@ -142,6 +186,12 @@ final class HttpCalendarClient implements CalendarClient
                 'Accept' => self::ACCEPT,
                 'User-Agent' => $this->userAgent,
             ],
+            // Calendars have no legitimate reason to redirect; following a
+            // redirect would let a compromised calendar send requests to
+            // arbitrary hosts, bypassing the upgrade whitelist (SSRF).
+            'max_redirects' => 0,
+            'timeout' => $this->timeout,
+            'max_duration' => $this->maxDuration,
         ] + $extra;
     }
 

@@ -81,8 +81,8 @@ final class FakeCalendarClient implements CalendarClient
      */
     public function confirm(Receipt $receipt, ?int $blockHeight = null): void
     {
-        foreach ($receipt->detachedTimestampFile()->timestamp->findPending() as ['node' => $node]) {
-            $this->confirmed[bin2hex($node->msg)] = $blockHeight ?? $this->defaultBlockHeight;
+        foreach ($receipt->detachedTimestampFile()->timestamp->findPending() as ['msg' => $msg]) {
+            $this->confirmed[bin2hex($msg)] = $blockHeight ?? $this->defaultBlockHeight;
         }
     }
 

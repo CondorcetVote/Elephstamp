@@ -30,19 +30,34 @@ final class Timestamp
      */
     private array $ops = [];
 
-    public function __construct(public readonly string $msg)
+    /**
+     * @param string|null $msg the message this node commits to; null when it is
+     *                         unknown because the node sits below a
+     *                         non-computable operation (keccak256)
+     */
+    public function __construct(public readonly ?string $msg)
     {
-        if (\strlen($msg) > Operation::MAX_MSG_LENGTH) {
+        if ($msg !== null && \strlen($msg) > Operation::MAX_MSG_LENGTH) {
             throw new SerializationException(\sprintf('Message exceeds operation length limit: %d > %d', \strlen($msg), Operation::MAX_MSG_LENGTH));
         }
     }
 
     /**
      * Attach an attestation to this node (deduplicated).
+     *
+     * @return bool whether the attestation was not already present
      */
-    public function addAttestation(TimeAttestation $attestation): void
+    public function addAttestation(TimeAttestation $attestation): bool
     {
-        $this->attestations[$attestation->identityKey()] = $attestation;
+        $key = $attestation->identityKey();
+
+        if (isset($this->attestations[$key])) {
+            return false;
+        }
+
+        $this->attestations[$key] = $attestation;
+
+        return true;
     }
 
     /**
@@ -59,7 +74,7 @@ final class Timestamp
             return $this->ops[$key]['timestamp'];
         }
 
-        $child = new self($operation->apply($this->msg));
+        $child = new self(self::childMsg($operation, $this->msg));
         $this->ops[$key] = ['op' => $operation, 'timestamp' => $child];
 
         return $child;
@@ -72,7 +87,7 @@ final class Timestamp
      */
     public function setOp(Operation $operation, self $child): void
     {
-        if ($operation->apply($this->msg) !== $child->msg) {
+        if (self::childMsg($operation, $this->msg) !== $child->msg) {
             throw new SerializationException("Operation result does not match the child timestamp's message");
         }
 
@@ -99,26 +114,37 @@ final class Timestamp
      * Merge every operation and attestation from another timestamp into this one.
      *
      * @throws SerializationException if the timestamps are for different messages
+     *
+     * @return bool whether the merge added anything new to the tree
      */
-    public function merge(self $other): void
+    public function merge(self $other): bool
     {
         if ($this->msg !== $other->msg) {
             throw new SerializationException('Cannot merge timestamps for different messages');
         }
 
+        $changed = false;
+
         foreach ($other->attestations as $attestation) {
-            $this->addAttestation($attestation);
+            $changed = $this->addAttestation($attestation) || $changed;
         }
 
-        foreach ($other->ops as ['op' => $op, 'timestamp' => $otherChild]) {
-            $this->addOp($op)->merge($otherChild);
+        foreach ($other->ops as $key => ['op' => $op, 'timestamp' => $otherChild]) {
+            $isNewEdge = !isset($this->ops[$key]);
+            $childChanged = $this->addOp($op)->merge($otherChild);
+            $changed = $changed || $isNewEdge || $childChanged;
         }
+
+        return $changed;
     }
 
     /**
      * Every attestation in the tree, paired with the message it commits to.
      *
-     * @return list<array{msg: string, attestation: TimeAttestation}>
+     * The message is null for attestations sitting below a non-computable
+     * operation (keccak256).
+     *
+     * @return list<array{msg: ?string, attestation: TimeAttestation}>
      */
     public function allAttestations(): array
     {
@@ -156,18 +182,24 @@ final class Timestamp
      *
      * These are the nodes whose message must be re-submitted to a calendar to
      * upgrade the timestamp. A node that already carries any attestation stops
-     * the descent, mirroring the reference client.
+     * the descent, mirroring the reference client. Nodes below a non-computable
+     * operation (keccak256) are skipped: their commitment is unknown, so they
+     * cannot be re-submitted.
      *
-     * @return list<array{node: Timestamp, attestation: PendingAttestation}>
+     * @return list<array{node: Timestamp, msg: string, attestation: PendingAttestation}>
      */
     public function findPending(): array
     {
         $result = [];
 
         foreach ($this->directlyVerified() as $node) {
+            if ($node->msg === null) {
+                continue;
+            }
+
             foreach ($node->attestations as $attestation) {
                 if ($attestation instanceof PendingAttestation) {
-                    $result[] = ['node' => $node, 'attestation' => $attestation];
+                    $result[] = ['node' => $node, 'msg' => $node->msg, 'attestation' => $attestation];
                 }
             }
         }
@@ -248,9 +280,11 @@ final class Timestamp
      * Deserialize a timestamp for a known initial message.
      *
      * The message is not stored in the format, so it must be supplied; it is
-     * assumed correct and used to compute every operation result eagerly.
+     * assumed correct and used to compute every operation result eagerly. A
+     * null message deserializes an unverifiable subtree (below a keccak256
+     * edge): its structure is preserved but its messages stay unknown.
      */
-    public static function deserialize(Deserializer $deserializer, string $initialMsg, int $recursionLimit = self::RECURSION_LIMIT): self
+    public static function deserialize(Deserializer $deserializer, ?string $initialMsg, int $recursionLimit = self::RECURSION_LIMIT): self
     {
         if ($recursionLimit <= 0) {
             throw new SerializationException('Reached timestamp recursion depth limit while deserializing');
@@ -266,7 +300,7 @@ final class Timestamp
             }
 
             $op = Operation::fromTag($tag, $deserializer);
-            $child = self::deserialize($deserializer, $op->apply($initialMsg), $recursionLimit - 1);
+            $child = self::deserialize($deserializer, self::childMsg($op, $initialMsg), $recursionLimit - 1);
             $self->setOp($op, $child);
         };
 
@@ -280,6 +314,15 @@ final class Timestamp
         $consume($tag);
 
         return $self;
+    }
+
+    /**
+     * The message an operation edge leads to, or null when it cannot be
+     * computed (unknown parent message, or a non-computable operation).
+     */
+    private static function childMsg(Operation $operation, ?string $msg): ?string
+    {
+        return ($msg === null || !$operation->isComputable()) ? null : $operation->apply($msg);
     }
 
     /**

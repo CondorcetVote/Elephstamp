@@ -36,6 +36,23 @@ it('round-trips booleans', function (bool $value): void {
     expect(new Deserializer($serializer->getBytes())->readBool())->toBe($value);
 })->with([true, false]);
 
+it('rejects a varuint too large for a 64-bit integer', function (): void {
+    // Nine continuation bytes push the shift to 63 bits: the tenth byte would
+    // overflow PHP's signed integer, so the read must abort first.
+    new Deserializer("\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01")->readVaruint();
+})->throws(SerializationException::class, 'too large');
+
+it('rejects a varuint truncated in the middle of a continuation', function (): void {
+    new Deserializer("\x80")->readVaruint();
+})->throws(SerializationException::class, 'Tried to read');
+
+it('accepts a non-canonical varuint encoding', function (): void {
+    // "\x80\x00" encodes 0 on two bytes. The reference client accepts it too;
+    // as a consequence, byte-identical re-serialization is only guaranteed
+    // for canonically encoded input.
+    expect(new Deserializer("\x80\x00")->readVaruint())->toBe(0);
+});
+
 it('rejects a negative varuint', function (): void {
     (new Serializer)->writeVaruint(-1);
 })->throws(SerializationException::class);

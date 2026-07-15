@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use CondorcetVote\ElephStamp\Attestation\{BitcoinAttestation, PendingAttestation};
 use CondorcetVote\ElephStamp\Calendar\HttpCalendarClient;
+use CondorcetVote\ElephStamp\Exception\CalendarException;
 use CondorcetVote\ElephStamp\Serialization\Serializer;
 use CondorcetVote\ElephStamp\Timestamp;
+use Symfony\Component\HttpClient\Exception\TransportException;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -89,6 +91,67 @@ it('captures a malformed response body as a failure instead of throwing', functi
     $responses = $client->submit(['https://a.example'], hash('sha256', 'x', binary: true));
 
     expect($responses[0]->isFailure())->toBeTrue();
+});
+
+it('captures a failure at request time without aborting the batch', function (): void {
+    $digest = hash('sha256', 'x', binary: true);
+    $body = serializedTimestamp($digest, static function (Timestamp $t): void {
+        $t->addAttestation(new PendingAttestation('https://a.example'));
+    });
+
+    // An invalid URL (or DNS failure) makes the underlying client throw
+    // before any response exists; it must become this calendar's failure.
+    $client = new HttpCalendarClient(new MockHttpClient(function (string $method, string $url) use ($body): MockResponse {
+        if (str_contains($url, 'bad.example')) {
+            throw new TransportException('DNS failure');
+        }
+
+        return new MockResponse($body);
+    }));
+
+    $responses = $client->submit(['https://bad.example', 'https://good.example'], $digest);
+
+    expect($responses[0]->isFailure())->toBeTrue()
+        ->and($responses[0]->error)->toBeInstanceOf(CalendarException::class)
+        ->and($responses[0]->error?->getMessage())->toContain('DNS failure')
+        ->and($responses[1]->isSuccess())->toBeTrue();
+});
+
+it('captures a transport error mid-response as a failure', function (): void {
+    $client = new HttpCalendarClient(new MockHttpClient(new MockResponse((static function (): Generator {
+        yield 'partial body';
+
+        throw new TransportException('connection reset');
+    })())));
+
+    $responses = $client->submit(['https://a.example'], hash('sha256', 'x', binary: true));
+
+    expect($responses[0]->isFailure())->toBeTrue()
+        ->and($responses[0]->error?->getMessage())->toContain('connection reset');
+});
+
+it('rejects a response body exceeding the size cap', function (): void {
+    $client = new HttpCalendarClient(new MockHttpClient(new MockResponse(str_repeat('x', 10_001))));
+
+    $responses = $client->submit(['https://a.example'], hash('sha256', 'x', binary: true));
+
+    expect($responses[0]->isFailure())->toBeTrue()
+        ->and($responses[0]->error?->getMessage())->toContain('size limit');
+});
+
+it('sends hardened request options: no redirects, explicit timeouts', function (): void {
+    $captured = null;
+    $client = new HttpCalendarClient(new MockHttpClient(function (string $method, string $url, array $options) use (&$captured): MockResponse {
+        $captured = $options;
+
+        return new MockResponse('', ['http_code' => 404]);
+    }), timeout: 5.0, maxDuration: 20.0);
+
+    $client->getTimestamps([['url' => 'https://a.example', 'commitment' => 'c']]);
+
+    expect($captured['max_redirects'])->toBe(0)
+        ->and($captured['timeout'])->toBe(5.0)
+        ->and($captured['max_duration'])->toBe(20.0);
 });
 
 it('contacts every calendar in a batch', function (): void {

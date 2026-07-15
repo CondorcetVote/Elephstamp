@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace CondorcetVote\ElephStamp;
 
 use CondorcetVote\ElephStamp\Attestation\{BitcoinAttestation, PendingAttestation};
-use CondorcetVote\ElephStamp\Exception\InvalidInputException;
+use CondorcetVote\ElephStamp\Exception\{InvalidInputException, SerializationException};
 use CondorcetVote\ElephStamp\Operation\HashOperation;
 use SplFileObject;
 
@@ -18,6 +18,15 @@ use SplFileObject;
  */
 final class Receipt
 {
+    /**
+     * Hard cap on the size of an `.ots` input this library will load.
+     *
+     * Real proofs are a few kilobytes. An `.ots` file is untrusted input, and
+     * the deserializer can allocate up to a few hundred bytes per input byte,
+     * so the cap keeps a forged receipt from exhausting memory.
+     */
+    public const int MAX_RECEIPT_BYTES = 1_000_000;
+
     public function __construct(private readonly DetachedTimestampFile $detached) {}
 
     /**
@@ -25,6 +34,10 @@ final class Receipt
      */
     public static function fromBytes(string $bytes): self
     {
+        if (\strlen($bytes) > self::MAX_RECEIPT_BYTES) {
+            throw new SerializationException(\sprintf('Receipt exceeds the maximum size of %d bytes', self::MAX_RECEIPT_BYTES));
+        }
+
         return new self(DetachedTimestampFile::fromBytes($bytes));
     }
 
@@ -37,6 +50,12 @@ final class Receipt
     {
         if (!is_file($path) || !is_readable($path)) {
             throw new InvalidInputException(\sprintf('Receipt file does not exist or is not readable: %s', $path));
+        }
+
+        $size = filesize($path);
+
+        if ($size !== false && $size > self::MAX_RECEIPT_BYTES) {
+            throw new SerializationException(\sprintf('Receipt exceeds the maximum size of %d bytes', self::MAX_RECEIPT_BYTES));
         }
 
         $bytes = file_get_contents($path);
@@ -70,6 +89,10 @@ final class Receipt
             }
 
             $bytes .= $chunk;
+
+            if (\strlen($bytes) > self::MAX_RECEIPT_BYTES) {
+                throw new SerializationException(\sprintf('Receipt exceeds the maximum size of %d bytes', self::MAX_RECEIPT_BYTES));
+            }
         }
 
         return self::fromBytes($bytes);
@@ -86,12 +109,37 @@ final class Receipt
     /**
      * Write the receipt to an `.ots` file on disk.
      *
+     * The bytes go through a temporary file renamed into place, so a crash
+     * mid-write can never truncate an existing receipt — often the only copy
+     * of a nonced commitment.
+     *
      * @throws InvalidInputException if the file cannot be written
      */
     public function saveToPath(string $path): void
     {
-        if (file_put_contents($path, $this->toBytes()) === false) {
+        $bytes = $this->toBytes();
+        $directory = \dirname($path);
+
+        // tempnam() would silently fall back to the system temp directory
+        // (breaking the atomic same-filesystem rename), so check first.
+        $temporary = is_dir($directory) && is_writable($directory) ? tempnam($directory, '.ots.tmp.') : false;
+
+        if ($temporary === false) {
             throw new InvalidInputException(\sprintf('Unable to write receipt file: %s', $path));
+        }
+
+        try {
+            // tempnam() creates the file as 0600; align with the permissions a
+            // plain file_put_contents() would have produced.
+            @chmod($temporary, 0666 & ~umask());
+
+            if (@file_put_contents($temporary, $bytes) !== \strlen($bytes) || !@rename($temporary, $path)) {
+                throw new InvalidInputException(\sprintf('Unable to write receipt file: %s', $path));
+            }
+        } finally {
+            if (is_file($temporary)) {
+                @unlink($temporary);
+            }
         }
     }
 

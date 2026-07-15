@@ -7,7 +7,7 @@ namespace CondorcetVote\ElephStamp;
 use CondorcetVote\ElephStamp\Merkle\MerkleTree;
 use CondorcetVote\ElephStamp\Random\{CryptoRandomSource, DeterministicRandomSource, RandomSource};
 use CondorcetVote\ElephStamp\Calendar\{CalendarClient, CalendarWhitelist, FakeCalendarClient, HttpCalendarClient};
-use CondorcetVote\ElephStamp\Exception\{InvalidInputException, StampingException};
+use CondorcetVote\ElephStamp\Exception\{InvalidInputException, SerializationException, StampingException};
 use CondorcetVote\ElephStamp\Operation\{Append, HashOperation, Sha256};
 
 /**
@@ -90,6 +90,20 @@ final class ElephStamp
             throw new InvalidInputException('At least one calendar URL is required');
         }
 
+        foreach ($this->calendarUrls as $url) {
+            if (!str_starts_with($url, 'https://')) {
+                throw new InvalidInputException(\sprintf('Calendar URLs must use https, got: %s', $url));
+            }
+        }
+
+        // A duplicated URL would count several times toward requiredCalendars,
+        // silently voiding the m-of-n redundancy policy.
+        $normalizedUrls = array_map(static fn(string $url): string => strtolower(rtrim($url, '/')), $this->calendarUrls);
+
+        if (\count(array_unique($normalizedUrls)) !== \count($normalizedUrls)) {
+            throw new InvalidInputException('Calendar URLs must be unique');
+        }
+
         if ($this->requiredCalendars < 1 || $this->requiredCalendars > \count($this->calendarUrls)) {
             throw new InvalidInputException(\sprintf(
                 'requiredCalendars must be between 1 and the number of calendars (%d); got %d',
@@ -143,8 +157,14 @@ final class ElephStamp
      * Timestamp several files at once, sharing a single calendar submission.
      *
      * All files are bound to one merkle tree, so a single commitment covers
-     * them; each file still gets its own independent receipt.
+     * them; each file still gets its own independent receipt. The receipts of
+     * a batch share their tree nodes in memory: upgrading one also refreshes
+     * its siblings, until they are reloaded from disk.
      *
+     * Privacy: the merkle tree embeds each leaf's message into the proofs of
+     * its neighbours. A file stamped {@see FileToStamp::withoutNonce()} in a
+     * batch therefore exposes its plain digest to whoever holds a sibling
+     * receipt, in addition to the calendars.
      *
      * @throws StampingException if too few calendars accept the request
      *
@@ -183,6 +203,11 @@ final class ElephStamp
      */
     public function upgrade(Receipt $receipt): bool
     {
+        // A complete receipt has nothing left to poll for.
+        if ($receipt->isComplete()) {
+            return false;
+        }
+
         // Only contact calendars whose URI is whitelisted: an untrusted `.ots`
         // must not be able to point us at arbitrary hosts.
         $pending = array_values(array_filter(
@@ -195,7 +220,7 @@ final class ElephStamp
         }
 
         $requests = array_map(
-            static fn(array $entry): array => ['url' => $entry['attestation']->uri, 'commitment' => $entry['node']->msg],
+            static fn(array $entry): array => ['url' => $entry['attestation']->uri, 'commitment' => $entry['msg']],
             $pending,
         );
 
@@ -205,9 +230,15 @@ final class ElephStamp
         // calendar that is unreachable or still has nothing simply yields no
         // timestamp and is skipped, never aborting the pass.
         foreach ($this->calendarClient->getTimestamps($requests) as $index => $response) {
-            if ($response->timestamp !== null) {
-                $pending[$index]['node']->merge($response->timestamp);
-                $changed = true;
+            if ($response->timestamp === null) {
+                continue;
+            }
+
+            try {
+                $changed = $pending[$index]['node']->merge($response->timestamp) || $changed;
+            } catch (SerializationException) {
+                // A timestamp that does not commit to the digest we asked for
+                // is hostile or corrupt: skip that calendar, keep the pass.
             }
         }
 
@@ -227,6 +258,10 @@ final class ElephStamp
 
     private function submitToCalendars(Timestamp $merkleTip): void
     {
+        // The tip always descends from real file digests, never from an
+        // unverifiable subtree.
+        \assert($merkleTip->msg !== null);
+
         $merged = 0;
         $errors = [];
 

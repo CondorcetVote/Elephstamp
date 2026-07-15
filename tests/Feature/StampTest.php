@@ -179,6 +179,67 @@ it('describes a proof as a readable tree', function (): void {
     expect($receipt->describe())->toContain('bitcoin attestation → block 650000');
 });
 
+it('skips a hostile calendar returning a timestamp for a different commitment', function (): void {
+    $client = new ElephStamp(
+        calendarClient: new class implements CalendarClient {
+            public function submit(array $calendarUrls, string $digest): array
+            {
+                return array_map(static function (string $url) use ($digest): CalendarResponse {
+                    $timestamp = new Timestamp($digest);
+                    $timestamp->addAttestation(new PendingAttestation($url));
+
+                    return CalendarResponse::success($url, $timestamp);
+                }, $calendarUrls);
+            }
+
+            public function getTimestamps(array $requests): array
+            {
+                return array_map(static function (array $request): CalendarResponse {
+                    // A forged proof for a commitment nobody asked about.
+                    $timestamp = new Timestamp(hash('sha256', 'evil', binary: true));
+                    $timestamp->addAttestation(new BitcoinAttestation(1));
+
+                    return CalendarResponse::success($request['url'], $timestamp);
+                }, $requests);
+            }
+        },
+        calendarUrls: ['https://a.example'],
+        randomSource: new DeterministicRandomSource,
+        upgradeWhitelist: ['https://a.example'],
+    );
+
+    $receipt = $client->stamp(FileToStamp::fromContent('target'));
+
+    expect($client->upgrade($receipt))->toBeFalse()
+        ->and($receipt->isPending())->toBeTrue();
+});
+
+it('reports no change when a completed receipt is upgraded again', function (): void {
+    $client = ElephStamp::fake();
+    $receipt = $client->stamp(FileToStamp::fromContent('idempotent'));
+
+    $client->fakeCalendar()->confirmAll();
+
+    expect($client->upgrade($receipt))->toBeTrue();
+
+    $bytes = $receipt->toBytes();
+
+    expect($client->upgrade($receipt))->toBeFalse()
+        ->and($receipt->toBytes())->toBe($bytes);
+});
+
+it('rejects duplicate calendar URLs', function (): void {
+    new ElephStamp(calendarUrls: ['https://a.example', 'https://a.example/'], requiredCalendars: 2);
+})->throws(InvalidInputException::class, 'unique');
+
+it('rejects plaintext http calendar URLs', function (): void {
+    new ElephStamp(calendarUrls: ['http://a.example']);
+})->throws(InvalidInputException::class, 'https');
+
+it('rejects plaintext http whitelist patterns', function (): void {
+    new ElephStamp(calendarUrls: ['https://a.example'], upgradeWhitelist: ['http://*.example']);
+})->throws(InvalidInputException::class, 'https');
+
 it('rejects an out-of-range required calendar threshold', function (): void {
     new ElephStamp(calendarUrls: ['https://a.example'], requiredCalendars: 2);
 })->throws(InvalidInputException::class);

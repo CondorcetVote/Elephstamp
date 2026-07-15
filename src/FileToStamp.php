@@ -122,6 +122,10 @@ final class FileToStamp
 
     /**
      * Return a copy that commits to the plain file digest, without a nonce.
+     *
+     * Privacy caveats: the calendars learn the plain digest, and inside a
+     * {@see ElephStamp::stampMany()} batch the digest is also embedded in the
+     * sibling receipts, so whoever holds one of them learns it too.
      */
     public function withoutNonce(): self
     {

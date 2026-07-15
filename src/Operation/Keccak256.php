@@ -11,8 +11,10 @@ use CondorcetVote\ElephStamp\Exception\SerializationException;
  *
  * This library only supports the Bitcoin calendar workflow, and PHP ships no
  * Keccak-256 implementation (its {@see hash()} "sha3-256" uses different
- * padding). The tag is recognised so proofs that merely reference it can be
- * identified, but applying it is not supported.
+ * padding). Proofs containing a keccak256 edge still deserialize and
+ * round-trip byte-identically, but the subtree below the edge is marked
+ * unverifiable: its messages are unknown, so it can be neither verified nor
+ * upgraded.
  */
 final class Keccak256 extends UnaryOperation
 {
@@ -21,6 +23,11 @@ final class Keccak256 extends UnaryOperation
     public function tag(): string
     {
         return self::TAG;
+    }
+
+    public function isComputable(): bool
+    {
+        return false;
     }
 
     public function describe(): string
