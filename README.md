@@ -1,5 +1,10 @@
 # ElephStamp
 
+[![Packagist Version](https://img.shields.io/packagist/v/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
+[![Packagist Downloads](https://img.shields.io/packagist/dt/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
+[![CI](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml)
+[![License](https://img.shields.io/packagist/l/condorcet-vote/elephstamp)](LICENSE)
+
 A modern, object-oriented PHP library for [OpenTimestamps](https://opentimestamps.org/).
 It lets you **register a timestamp proof** for a file with the public calendar
 servers and **track/collect the completed proof** once it has been anchored in
