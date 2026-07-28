@@ -20,12 +20,12 @@ abstract class Operation
      *
      * Bounds the memory a verifier needs to walk a single commitment path.
      */
-    public const int MAX_RESULT_LENGTH = 4096;
+    public const MAX_RESULT_LENGTH = 4096;
 
     /**
      * Maximum length of a message an operation may be applied to.
      */
-    public const int MAX_MSG_LENGTH = 4096;
+    public const MAX_MSG_LENGTH = 4096;
 
     /**
      * The one-byte tag identifying this operation in the binary format.

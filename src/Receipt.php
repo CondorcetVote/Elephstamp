@@ -25,7 +25,7 @@ final class Receipt
      * the deserializer can allocate up to a few hundred bytes per input byte,
      * so the cap keeps a forged receipt from exhausting memory.
      */
-    public const int MAX_RECEIPT_BYTES = 1_000_000;
+    public const MAX_RECEIPT_BYTES = 1_000_000;
 
     public function __construct(private readonly DetachedTimestampFile $detached) {}
 

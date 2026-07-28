@@ -19,12 +19,12 @@ abstract class TimeAttestation
     /**
      * Length of an attestation tag, in bytes.
      */
-    public const int TAG_SIZE = 8;
+    public const TAG_SIZE = 8;
 
     /**
      * Maximum size of a serialized attestation payload, in bytes.
      */
-    public const int MAX_PAYLOAD_SIZE = 8192;
+    public const MAX_PAYLOAD_SIZE = 8192;
 
     /**
      * The eight-byte tag identifying this attestation type.

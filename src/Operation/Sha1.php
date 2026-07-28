@@ -13,7 +13,7 @@ namespace CondorcetVote\ElephStamp\Operation;
  */
 final class Sha1 extends HashOperation
 {
-    public const string TAG = "\x02";
+    public const TAG = "\x02";
 
     public function tag(): string
     {

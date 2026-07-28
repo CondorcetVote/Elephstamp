@@ -9,7 +9,7 @@ namespace CondorcetVote\ElephStamp\Operation;
  */
 final class Sha256 extends HashOperation
 {
-    public const string TAG = "\x08";
+    public const TAG = "\x08";
 
     public function tag(): string
     {

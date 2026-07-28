@@ -24,7 +24,7 @@ final class ElephStamp
      *
      * @var list<string>
      */
-    public const array DEFAULT_CALENDAR_URLS = [
+    public const DEFAULT_CALENDAR_URLS = [
         'https://a.pool.opentimestamps.org',
         'https://b.pool.opentimestamps.org',
         'https://a.pool.eternitywall.com',
@@ -39,7 +39,7 @@ final class ElephStamp
      *
      * @var list<string>
      */
-    public const array DEFAULT_UPGRADE_WHITELIST = [
+    public const DEFAULT_UPGRADE_WHITELIST = [
         'https://*.calendar.opentimestamps.org',
         'https://*.calendar.eternitywall.com',
         'https://*.calendar.catallaxy.com',
@@ -48,12 +48,12 @@ final class ElephStamp
     /**
      * Calendar URL used by the fake client.
      */
-    public const string FAKE_CALENDAR_URL = 'https://fake.calendar.elephstamp';
+    public const FAKE_CALENDAR_URL = 'https://fake.calendar.elephstamp';
 
     /**
      * Length of the per-file privacy nonce, in bytes.
      */
-    private const int NONCE_LENGTH = 16;
+    private const NONCE_LENGTH = 16;
 
     private readonly CalendarClient $calendarClient;
 
@@ -85,7 +85,7 @@ final class ElephStamp
         ?RandomSource $randomSource = null,
         ?array $upgradeWhitelist = null,
     ) {
-        $this->calendarClient = $calendarClient ?? new HttpCalendarClient;
+        $this->calendarClient = $calendarClient ?? self::defaultCalendarClient();
         $this->calendarUrls = $calendarUrls ?? self::DEFAULT_CALENDAR_URLS;
         $this->hashOperation = $hashOperation ?? new Sha256;
         $this->randomSource = $randomSource ?? new CryptoRandomSource;
@@ -117,6 +117,21 @@ final class ElephStamp
                 $this->requiredCalendars,
             ));
         }
+    }
+
+    /**
+     * Default transport: Symfony HttpCalendarClient when available, otherwise the
+     * caller must inject a CalendarClient (e.g. a curl-based one without Symfony).
+     */
+    private static function defaultCalendarClient(): CalendarClient
+    {
+        if (\class_exists(\Symfony\Component\HttpClient\HttpClient::class)) {
+            return new HttpCalendarClient;
+        }
+
+        throw new InvalidInputException(
+            'A CalendarClient must be provided when symfony/http-client is not installed',
+        );
     }
 
     /**

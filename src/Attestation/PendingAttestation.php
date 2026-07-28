@@ -16,9 +16,9 @@ use CondorcetVote\ElephStamp\Serialization\{Deserializer, Serializer};
  */
 final class PendingAttestation extends TimeAttestation
 {
-    public const string TAG = "\x83\xdf\xe3\x0d\x2e\xf9\x0c\x8e";
+    public const TAG = "\x83\xdf\xe3\x0d\x2e\xf9\x0c\x8e";
 
-    public const int MAX_URI_LENGTH = 1000;
+    public const MAX_URI_LENGTH = 1000;
 
     /**
      * Characters permitted in a calendar URI.
@@ -26,7 +26,7 @@ final class PendingAttestation extends TimeAttestation
      * Deliberately excludes the characters needed for query strings, fragments,
      * userinfo and IPv6 literals, keeping URIs simple and unambiguous.
      */
-    public const string ALLOWED_URI_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._/:';
+    public const ALLOWED_URI_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._/:';
 
     public function __construct(public readonly string $uri)
     {

@@ -18,9 +18,9 @@ final class DetachedTimestampFile
      * Header magic. Designed to give a hint in a hexdump while being detected
      * as "data" by the `file` utility.
      */
-    public const string HEADER_MAGIC = "\x00OpenTimestamps\x00\x00Proof\x00\xbf\x89\xe2\xe8\x84\xe8\x92\x94";
+    public const HEADER_MAGIC = "\x00OpenTimestamps\x00\x00Proof\x00\xbf\x89\xe2\xe8\x84\xe8\x92\x94";
 
-    public const int MAJOR_VERSION = 1;
+    public const MAJOR_VERSION = 1;
 
     private readonly string $fileDigest;
 

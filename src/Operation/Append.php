@@ -9,7 +9,7 @@ namespace CondorcetVote\ElephStamp\Operation;
  */
 final class Append extends BinaryOperation
 {
-    public const string TAG = "\xf0";
+    public const TAG = "\xf0";
 
     public function tag(): string
     {

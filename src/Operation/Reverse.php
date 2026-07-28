@@ -9,7 +9,7 @@ namespace CondorcetVote\ElephStamp\Operation;
  */
 final class Reverse extends UnaryOperation
 {
-    public const string TAG = "\xf2";
+    public const TAG = "\xf2";
 
     public function tag(): string
     {

@@ -25,12 +25,12 @@ final class HttpCalendarClient implements CalendarClient
     /**
      * Content type negotiated with calendar servers.
      */
-    private const string ACCEPT = 'application/vnd.opentimestamps.v1';
+    private const ACCEPT = 'application/vnd.opentimestamps.v1';
 
     /**
      * Hard cap on a calendar response body, matching the reference client.
      */
-    private const int MAX_RESPONSE_BYTES = 10_000;
+    private const MAX_RESPONSE_BYTES = 10_000;
 
     private readonly HttpClientInterface $httpClient;
 

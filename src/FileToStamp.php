@@ -25,7 +25,7 @@ final class FileToStamp
     /**
      * Size of the buffer used when reading files, in bytes.
      */
-    private const int CHUNK_SIZE = 1_048_576;
+    private const CHUNK_SIZE = 1_048_576;
 
     /**
      * @param Closure(HashOperation): string $digestFactory computes the file digest with a given hash operation

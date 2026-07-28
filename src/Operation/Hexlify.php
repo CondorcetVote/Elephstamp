@@ -9,13 +9,13 @@ namespace CondorcetVote\ElephStamp\Operation;
  */
 final class Hexlify extends UnaryOperation
 {
-    public const string TAG = "\xf3";
+    public const TAG = "\xf3";
 
     /**
      * Every invocation doubles the input size, so the message limit is half the
      * result limit.
      */
-    public const int MAX_MSG_LENGTH = 2048;
+    public const MAX_MSG_LENGTH = 2048;
 
     public function tag(): string
     {

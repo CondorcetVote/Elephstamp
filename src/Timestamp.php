@@ -18,7 +18,7 @@ use CondorcetVote\ElephStamp\Operation\Operation;
  */
 final class Timestamp
 {
-    private const int RECURSION_LIMIT = 256;
+    private const RECURSION_LIMIT = 256;
 
     /**
      * @var array<string, TimeAttestation> keyed by attestation identity

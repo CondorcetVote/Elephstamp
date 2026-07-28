@@ -9,7 +9,7 @@ namespace CondorcetVote\ElephStamp\Operation;
  */
 final class Ripemd160 extends HashOperation
 {
-    public const string TAG = "\x03";
+    public const TAG = "\x03";
 
     public function tag(): string
     {

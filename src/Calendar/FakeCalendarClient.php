@@ -23,7 +23,7 @@ final class FakeCalendarClient implements CalendarClient
     /**
      * Default block height reported once a commitment is confirmed.
      */
-    public const int DEFAULT_BLOCK_HEIGHT = 800_000;
+    public const DEFAULT_BLOCK_HEIGHT = 800_000;
 
     /**
      * @var array<string, true> commitments seen via submit(), keyed by hex digest

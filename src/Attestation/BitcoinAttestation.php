@@ -18,7 +18,7 @@ use CondorcetVote\ElephStamp\Serialization\{Deserializer, Serializer};
  */
 final class BitcoinAttestation extends TimeAttestation
 {
-    public const string TAG = "\x05\x88\x96\x0d\x73\xd7\x19\x01";
+    public const TAG = "\x05\x88\x96\x0d\x73\xd7\x19\x01";
 
     public function __construct(public readonly int $blockHeight)
     {

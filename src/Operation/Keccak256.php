@@ -18,7 +18,7 @@ use CondorcetVote\ElephStamp\Exception\SerializationException;
  */
 final class Keccak256 extends UnaryOperation
 {
-    public const string TAG = "\x67";
+    public const TAG = "\x67";
 
     public function tag(): string
     {

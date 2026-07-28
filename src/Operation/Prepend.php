@@ -9,7 +9,7 @@ namespace CondorcetVote\ElephStamp\Operation;
  */
 final class Prepend extends BinaryOperation
 {
-    public const string TAG = "\xf1";
+    public const TAG = "\xf1";
 
     public function tag(): string
     {
