@@ -1,6 +1,6 @@
 {
-    "name": "condorcet-vote/elephstamp",
-    "description": "Modern, object-oriented PHP library for OpenTimestamps: register timestamp proofs with calendar servers and collect the completed .ots certification.",
+    "name": "codemacher/elephstamp",
+    "description": "PHP 8.2-compatible fork of CondorcetVote/ElephStamp for OpenTimestamps proofs.",
     "type": "library",
     "keywords": [
         "opentimestamps",
@@ -52,6 +52,10 @@
         {
             "name": "Julien Boudry",
             "email": "julien@condorcet.io"
+        },
+        {
+            "name": "Thomas Rokohl",
+            "email": "rokohl@codemacher.de"
         }
     ],
     "config": {
