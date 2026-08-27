@@ -30,6 +30,7 @@ An operation that combines the message with a fixed argument (append/prepend).
 | [apply(...)](../Operation/method_apply.md) | _Compute the operation result for the given message._ |
 | [comparisonKey(...)](method_comparisonKey.md) | __ |
 | [describe(...)](../Operation/method_describe.md) | _Human-readable label for the operation, used when describing a proof._ |
+| [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](method_serialize.md) | __ |
 | [tag(...)](../Operation/method_tag.md) | _The one-byte tag identifying this operation in the binary format._ |
 
@@ -57,6 +58,7 @@ abstract class CondorcetVote\ElephStamp\Operation\BinaryOperation extends Condor
     // Inherited Methods
     final public function Operation->apply( string $message ): string;
     abstract public function Operation->describe( ): string;
+    public function Operation->isComputable( ): bool;
     abstract public function Operation->tag( ): string;
 
 }
@@ -87,6 +89,7 @@ abstract class CondorcetVote\ElephStamp\Operation\BinaryOperation extends Condor
     abstract public function Operation->describe( ): string;
     final public static function Operation::deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function Operation::fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public function Operation->isComputable( ): bool;
     abstract public function Operation->tag( ): string;
 
 }

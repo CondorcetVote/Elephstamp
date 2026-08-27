@@ -1,6 +1,6 @@
 > CondorcetVote \ [Timestamp](class_Timestamp.md)
 # Method describe()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L183)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L215)
 
 ```php
 public function Timestamp->describe( [ int $indent = 0 ] ): string

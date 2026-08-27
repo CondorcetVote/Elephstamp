@@ -32,7 +32,7 @@ final class CondorcetVote\ElephStamp\Calendar\HttpCalendarClient implements Cond
 {
 
     // Methods
-    public function __construct( [ ?Symfony\Contracts\HttpClient\HttpClientInterface $httpClient = null, string $userAgent = 'ElephStamp' ] );
+    public function __construct( [ ?Symfony\Contracts\HttpClient\HttpClientInterface $httpClient = null, string $userAgent = 'ElephStamp', float $timeout = 10.0, float $maxDuration = 30.0 ] );
     public function getTimestamps( array $requests ): array;
     public function submit( array $calendarUrls, string $digest ): array;
 
@@ -49,10 +49,12 @@ final class CondorcetVote\ElephStamp\Calendar\HttpCalendarClient implements Cond
 
     // Properties
     private readonly Symfony\Contracts\HttpClient\HttpClientInterface $httpClient;
+    private readonly float $maxDuration;
+    private readonly float $timeout;
     private readonly string $userAgent;
 
     // Methods
-    public function __construct( [ ?Symfony\Contracts\HttpClient\HttpClientInterface $httpClient = null, string $userAgent = 'ElephStamp' ] );
+    public function __construct( [ ?Symfony\Contracts\HttpClient\HttpClientInterface $httpClient = null, string $userAgent = 'ElephStamp', float $timeout = 10.0, float $maxDuration = 30.0 ] );
     public function getTimestamps( array $requests ): array;
     public function submit( array $calendarUrls, string $digest ): array;
 

@@ -1,6 +1,6 @@
 > CondorcetVote \ [Receipt](class_Receipt.md)
 # Method fromSplFileObject()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L56)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L75)
 
 ```php
 public static function Receipt::fromSplFileObject( SplFileObject $file ): self

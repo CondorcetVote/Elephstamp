@@ -1,13 +1,16 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ **MerkleTree**
 # Class MerkleTree
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Merkle/MerkleTree.php#L18)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Merkle/MerkleTree.php#L21)
 
 ## Description
 Builds the merkle tree that binds several file timestamps to a single
 commitment, so one calendar submission covers them all.
 
 The algorithm is structurally a merkle mountain range and is
-consensus-critical: it is guaranteed never to change.
+consensus-critical: it is guaranteed never to change. It reproduces
+`make_merkle_tree` of the reference python-opentimestamps implementation,
+whose pairs are combined with `cat_sha256` (a single SHA-256, as observed
+in proofs produced by the reference client).
 ## Elements
 
 ### Public Static Methods

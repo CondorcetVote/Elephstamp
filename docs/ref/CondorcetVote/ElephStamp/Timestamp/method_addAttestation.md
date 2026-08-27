@@ -1,9 +1,9 @@
 > CondorcetVote \ [Timestamp](class_Timestamp.md)
 # Method addAttestation()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L43)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L50)
 
 ```php
-public function Timestamp->addAttestation( CondorcetVote\ElephStamp\Attestation\TimeAttestation $attestation ): void
+public function Timestamp->addAttestation( CondorcetVote\ElephStamp\Attestation\TimeAttestation $attestation ): bool
 ```
 
 ## Description
@@ -20,6 +20,6 @@ CondorcetVote\ElephStamp\Attestation\TimeAttestation $attestation
 
 
 ## Return
-**Type:** `void`
+**Type:** `bool`
 
-
+whether the attestation was not already present

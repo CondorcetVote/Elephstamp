@@ -34,6 +34,7 @@ claim a timestamp makes.
 | [hashChunks(...)](../HashOperation/method_hashChunks.md) | _Hash a sequence of chunks incrementally, in bounded memory._ |
 | [hashData(...)](../HashOperation/method_hashData.md) | _Hash a whole in-memory payload._ |
 | [hashStream(...)](../HashOperation/method_hashStream.md) | _Hash a stream from its current position to its end, in bounded memory._ |
+| [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](../Operation/method_serialize.md) | __ |
 | [tag(...)](method_tag.md) | __ |
 
@@ -64,6 +65,7 @@ final class CondorcetVote\ElephStamp\Operation\Sha1 extends CondorcetVote\ElephS
     final public function HashOperation->hashChunks( iterable $chunks ): string;
     final public function HashOperation->hashData( string $data ): string;
     final public function HashOperation->hashStream( $stream ): string;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
 }
@@ -98,6 +100,7 @@ final class CondorcetVote\ElephStamp\Operation\Sha1 extends CondorcetVote\ElephS
     final public function HashOperation->hashChunks( iterable $chunks ): string;
     final public function HashOperation->hashData( string $data ): string;
     final public function HashOperation->hashStream( $stream ): string;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
 }

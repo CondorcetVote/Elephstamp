@@ -1,6 +1,6 @@
 > CondorcetVote \ [Timestamp](class_Timestamp.md)
 # Method serialize()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L207)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L239)
 
 ```php
 public function Timestamp->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void

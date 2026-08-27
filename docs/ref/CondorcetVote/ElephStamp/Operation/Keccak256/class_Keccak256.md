@@ -1,14 +1,16 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ **Keccak256**
 # Class Keccak256
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Operation/Keccak256.php#L17)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Operation/Keccak256.php#L19)
 
 ## Description
 Keccak-256, as used by Ethereum attestations.
 
 This library only supports the Bitcoin calendar workflow, and PHP ships no
 Keccak-256 implementation (its {@see \CondorcetVote\ElephStamp\Operation\hash()} "sha3-256" uses different
-padding). The tag is recognised so proofs that merely reference it can be
-identified, but applying it is not supported.
+padding). Proofs containing a keccak256 edge still deserialize and
+round-trip byte-identically, but the subtree below the edge is marked
+unverifiable: its messages are unknown, so it can be neither verified nor
+upgraded.
 ## Elements
 
 ### Public Constants
@@ -30,6 +32,7 @@ identified, but applying it is not supported.
 | [apply(...)](../Operation/method_apply.md) | _Compute the operation result for the given message._ |
 | [comparisonKey(...)](../Operation/method_comparisonKey.md) | _Key used to order operations deterministically within a timestamp._ |
 | [describe(...)](method_describe.md) | __ |
+| [isComputable(...)](method_isComputable.md) | __ |
 | [serialize(...)](../Operation/method_serialize.md) | __ |
 | [tag(...)](method_tag.md) | __ |
 
@@ -50,6 +53,7 @@ final class CondorcetVote\ElephStamp\Operation\Keccak256 extends CondorcetVote\E
 
     // Methods
     public function describe( ): string;
+    public function isComputable( ): bool;
     public function tag( ): string;
 
     // Inherited Methods
@@ -76,6 +80,7 @@ final class CondorcetVote\ElephStamp\Operation\Keccak256 extends CondorcetVote\E
 
     // Methods
     public function describe( ): string;
+    public function isComputable( ): bool;
     public function tag( ): string;
 
     // Inherited Methods

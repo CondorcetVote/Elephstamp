@@ -1,6 +1,6 @@
 > CondorcetVote \ [DetachedTimestampFile](class_DetachedTimestampFile.md)
 # Method fromBytes()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/DetachedTimestampFile.php#L67)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/DetachedTimestampFile.php#L71)
 
 ```php
 public static function DetachedTimestampFile::fromBytes( string $bytes ): self

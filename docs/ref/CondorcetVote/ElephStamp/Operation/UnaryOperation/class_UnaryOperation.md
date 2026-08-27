@@ -24,6 +24,7 @@ An operation that acts on the message alone, with no argument.
 | [apply(...)](../Operation/method_apply.md) | _Compute the operation result for the given message._ |
 | [comparisonKey(...)](../Operation/method_comparisonKey.md) | _Key used to order operations deterministically within a timestamp._ |
 | [describe(...)](../Operation/method_describe.md) | _Human-readable label for the operation, used when describing a proof._ |
+| [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](../Operation/method_serialize.md) | __ |
 | [tag(...)](../Operation/method_tag.md) | _The one-byte tag identifying this operation in the binary format._ |
 
@@ -44,6 +45,7 @@ abstract class CondorcetVote\ElephStamp\Operation\UnaryOperation extends Condorc
     final public function Operation->apply( string $message ): string;
     public function Operation->comparisonKey( ): string;
     abstract public function Operation->describe( ): string;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     abstract public function Operation->tag( ): string;
 
@@ -68,6 +70,7 @@ abstract class CondorcetVote\ElephStamp\Operation\UnaryOperation extends Condorc
     abstract public function Operation->describe( ): string;
     final public static function Operation::deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function Operation::fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     abstract public function Operation->tag( ): string;
 

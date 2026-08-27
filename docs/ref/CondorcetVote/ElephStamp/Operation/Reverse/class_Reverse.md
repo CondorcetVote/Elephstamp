@@ -25,6 +25,7 @@ Reverse the bytes of the message.
 | [apply(...)](../Operation/method_apply.md) | _Compute the operation result for the given message._ |
 | [comparisonKey(...)](../Operation/method_comparisonKey.md) | _Key used to order operations deterministically within a timestamp._ |
 | [describe(...)](method_describe.md) | __ |
+| [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](../Operation/method_serialize.md) | __ |
 | [tag(...)](method_tag.md) | __ |
 
@@ -50,6 +51,7 @@ final class CondorcetVote\ElephStamp\Operation\Reverse extends CondorcetVote\Ele
     // Inherited Methods
     final public function Operation->apply( string $message ): string;
     public function Operation->comparisonKey( ): string;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
 }
@@ -78,6 +80,7 @@ final class CondorcetVote\ElephStamp\Operation\Reverse extends CondorcetVote\Ele
     public function Operation->comparisonKey( ): string;
     final public static function Operation::deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function Operation::fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
 }

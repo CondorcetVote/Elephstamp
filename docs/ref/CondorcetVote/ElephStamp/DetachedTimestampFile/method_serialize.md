@@ -1,6 +1,6 @@
 > CondorcetVote \ [DetachedTimestampFile](class_DetachedTimestampFile.md)
 # Method serialize()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/DetachedTimestampFile.php#L42)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/DetachedTimestampFile.php#L46)
 
 ```php
 public function DetachedTimestampFile->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void

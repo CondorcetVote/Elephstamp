@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method upgrade()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L184)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L210)
 
 ```php
 public function ElephStamp->upgrade( CondorcetVote\ElephStamp\Receipt $receipt ): bool

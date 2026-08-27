@@ -1,6 +1,6 @@
 > CondorcetVote \ [Timestamp](class_Timestamp.md)
 # Method setOp()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L73)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L88)
 
 ```php
 public function Timestamp->setOp( CondorcetVote\ElephStamp\Operation\Operation $operation, self $child ): void

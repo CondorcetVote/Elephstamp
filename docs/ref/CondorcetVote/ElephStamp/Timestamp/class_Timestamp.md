@@ -48,21 +48,21 @@ final class CondorcetVote\ElephStamp\Timestamp
 {
 
     // Properties
-    public protected(set) readonly string $msg;
+    public protected(set) readonly ?string $msg;
 
     // Static Methods
-    public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer, string $initialMsg, [ int $recursionLimit = 256 ] ): self;
+    public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer, ?string $initialMsg, [ int $recursionLimit = 256 ] ): self;
 
     // Methods
-    public function __construct( string $msg );
-    public function addAttestation( CondorcetVote\ElephStamp\Attestation\TimeAttestation $attestation ): void;
+    public function __construct( ?string $msg );
+    public function addAttestation( CondorcetVote\ElephStamp\Attestation\TimeAttestation $attestation ): bool;
     public function addOp( CondorcetVote\ElephStamp\Operation\Operation $operation ): self;
     public function allAttestations( ): array;
     public function attestations( ): array;
     public function describe( [ int $indent = 0 ] ): string;
     public function findPending( ): array;
     public function hasBitcoinAttestation( ): bool;
-    public function merge( self $other ): void;
+    public function merge( self $other ): bool;
     public function operations( ): array;
     public function serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     public function setOp( CondorcetVote\ElephStamp\Operation\Operation $operation, self $child ): void;
@@ -78,23 +78,24 @@ final class CondorcetVote\ElephStamp\Timestamp
     private const int RECURSION_LIMIT = 256;
 
     // Properties
-    public protected(set) readonly string $msg;
+    public protected(set) readonly ?string $msg;
     private array $attestations = [];
     private array $ops = [];
 
     // Static Methods
-    public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer, string $initialMsg, [ int $recursionLimit = 256 ] ): self;
+    public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer, ?string $initialMsg, [ int $recursionLimit = 256 ] ): self;
+    private static function childMsg( CondorcetVote\ElephStamp\Operation\Operation $operation, ?string $msg ): ?string;
 
     // Methods
-    public function __construct( string $msg );
-    public function addAttestation( CondorcetVote\ElephStamp\Attestation\TimeAttestation $attestation ): void;
+    public function __construct( ?string $msg );
+    public function addAttestation( CondorcetVote\ElephStamp\Attestation\TimeAttestation $attestation ): bool;
     public function addOp( CondorcetVote\ElephStamp\Operation\Operation $operation ): self;
     public function allAttestations( ): array;
     public function attestations( ): array;
     public function describe( [ int $indent = 0 ] ): string;
     public function findPending( ): array;
     public function hasBitcoinAttestation( ): bool;
-    public function merge( self $other ): void;
+    public function merge( self $other ): bool;
     public function operations( ): array;
     public function serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     public function setOp( CondorcetVote\ElephStamp\Operation\Operation $operation, self $child ): void;

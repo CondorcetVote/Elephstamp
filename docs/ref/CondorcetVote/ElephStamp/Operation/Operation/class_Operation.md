@@ -27,6 +27,7 @@ message of the next node in the tree. Operations are immutable value objects.
 | [apply(...)](method_apply.md) | _Compute the operation result for the given message._ |
 | [comparisonKey(...)](method_comparisonKey.md) | _Key used to order operations deterministically within a timestamp._ |
 | [describe(...)](method_describe.md) | _Human-readable label for the operation, used when describing a proof._ |
+| [isComputable(...)](method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](method_serialize.md) | __ |
 | [tag(...)](method_tag.md) | _The one-byte tag identifying this operation in the binary format._ |
 
@@ -47,6 +48,7 @@ abstract class CondorcetVote\ElephStamp\Operation\Operation
     final public function apply( string $message ): string;
     public function comparisonKey( ): string;
     abstract public function describe( ): string;
+    public function isComputable( ): bool;
     public function serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     abstract public function tag( ): string;
 
@@ -69,6 +71,7 @@ abstract class CondorcetVote\ElephStamp\Operation\Operation
     final public function apply( string $message ): string;
     public function comparisonKey( ): string;
     abstract public function describe( ): string;
+    public function isComputable( ): bool;
     public function serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     abstract public function tag( ): string;
 

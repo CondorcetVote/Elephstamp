@@ -31,6 +31,7 @@ Prepend a fixed prefix to the message.
 | [apply(...)](../Operation/method_apply.md) | _Compute the operation result for the given message._ |
 | [comparisonKey(...)](../BinaryOperation/method_comparisonKey.md) | __ |
 | [describe(...)](method_describe.md) | __ |
+| [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](../BinaryOperation/method_serialize.md) | __ |
 | [tag(...)](method_tag.md) | __ |
 
@@ -60,6 +61,7 @@ final class CondorcetVote\ElephStamp\Operation\Prepend extends CondorcetVote\Ele
     public function BinaryOperation->__construct( string $argument );
     final public function Operation->apply( string $message ): string;
     public function BinaryOperation->comparisonKey( ): string;
+    public function Operation->isComputable( ): bool;
     public function BinaryOperation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
 }
@@ -92,6 +94,7 @@ final class CondorcetVote\ElephStamp\Operation\Prepend extends CondorcetVote\Ele
     public function BinaryOperation->comparisonKey( ): string;
     final public static function Operation::deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function Operation::fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public function Operation->isComputable( ): bool;
     public function BinaryOperation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
 }

@@ -10,6 +10,11 @@ bytes. It is refreshed in place by {@see \CondorcetVote\ElephStamp\ElephStamp::u
 newly available blockchain attestations into it.
 ## Elements
 
+### Public Constants
+| Constant Name | Signature | Description |
+| ------------- | ------------- | ------------- |
+| MAX_RECEIPT_BYTES | `public const int MAX_RECEIPT_BYTES = 1000000` | _Hard cap on the size of an .ots input this library will load._ |
+
 ### Public Static Methods
 | Method Name | Description |
 | ------------- | ------------- |
@@ -40,6 +45,8 @@ newly available blockchain attestations into it.
 ```php
 final class CondorcetVote\ElephStamp\Receipt
 {
+    // Constants
+    public const int MAX_RECEIPT_BYTES = 1000000;
 
     // Static Methods
     public static function fromBytes( string $bytes ): self;
@@ -69,6 +76,8 @@ final class CondorcetVote\ElephStamp\Receipt
 ```php
 final class CondorcetVote\ElephStamp\Receipt
 {
+    // Constants
+    public const int MAX_RECEIPT_BYTES = 1000000;
 
     // Properties
     private readonly CondorcetVote\ElephStamp\DetachedTimestampFile $detached;

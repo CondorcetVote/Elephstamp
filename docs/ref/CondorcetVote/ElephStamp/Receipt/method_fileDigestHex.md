@@ -1,6 +1,6 @@
 > CondorcetVote \ [Receipt](class_Receipt.md)
 # Method fileDigestHex()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L142)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L190)
 
 ```php
 public function Receipt->fileDigestHex( ): string

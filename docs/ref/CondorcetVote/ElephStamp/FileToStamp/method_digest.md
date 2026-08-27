@@ -1,6 +1,6 @@
 > CondorcetVote \ [FileToStamp](class_FileToStamp.md)
 # Method digest()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/FileToStamp.php#L142)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/FileToStamp.php#L146)
 
 ```php
 public function FileToStamp->digest( CondorcetVote\ElephStamp\Operation\HashOperation $operation ): string

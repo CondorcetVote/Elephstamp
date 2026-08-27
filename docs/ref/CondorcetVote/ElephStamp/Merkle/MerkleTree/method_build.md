@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [MerkleTree](class_MerkleTree.md)
 # Method build()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Merkle/MerkleTree.php#L42)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Merkle/MerkleTree.php#L49)
 
 ```php
 public static function MerkleTree::build( array $leaves ): CondorcetVote\ElephStamp\Timestamp

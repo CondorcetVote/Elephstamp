@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method __construct()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L75)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L80)
 
 ```php
-public function ElephStamp->__construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, int $requiredCalendars = 1, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null ] )
+public function ElephStamp->__construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, ?int $requiredCalendars = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null ] )
 ```
 
 ## Parameters
@@ -26,11 +26,13 @@ calendars to submit to (defaults to {@see \CondorcetVote\ElephStamp\DEFAULT_CALE
 
 ### **requiredCalendars:**
 ```php
-int $requiredCalendars = 1
+?int $requiredCalendars = null
 ```
-**Type:** `int`
+**Type:** `?int`
 
-minimum number of calendars that must accept a stamp (the "m" of m-of-n)
+minimum number of calendars that must accept a stamp (the "m" of
+m-of-n); defaults to 2 — like the reference client — or to 1 when
+a single calendar is configured
 
 ### **hashOperation:**
 ```php

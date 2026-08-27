@@ -1,6 +1,6 @@
 > CondorcetVote \ [Timestamp](class_Timestamp.md)
 # Method hasBitcoinAttestation()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L143)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Timestamp.php#L169)
 
 ```php
 public function Timestamp->hasBitcoinAttestation( ): bool

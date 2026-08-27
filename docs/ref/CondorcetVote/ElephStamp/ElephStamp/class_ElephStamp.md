@@ -1,6 +1,6 @@
 > CondorcetVote \ **ElephStamp**
 # Class ElephStamp
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L19)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L20)
 
 ## Description
 The library entry point: submit timestamp requests to calendar servers and
@@ -45,7 +45,7 @@ final class CondorcetVote\ElephStamp\ElephStamp
     public static function fake( [ ?CondorcetVote\ElephStamp\Calendar\FakeCalendarClient $calendar = null ] ): self;
 
     // Methods
-    public function __construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, int $requiredCalendars = 1, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null ] );
+    public function __construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, ?int $requiredCalendars = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null ] );
     public function fakeCalendar( ): CondorcetVote\ElephStamp\Calendar\FakeCalendarClient;
     public function stamp( CondorcetVote\ElephStamp\FileToStamp $file ): CondorcetVote\ElephStamp\Receipt;
     public function stampMany( [ CondorcetVote\ElephStamp\FileToStamp ...$files ] ): array;
@@ -74,9 +74,10 @@ final class CondorcetVote\ElephStamp\ElephStamp
 
     // Static Methods
     public static function fake( [ ?CondorcetVote\ElephStamp\Calendar\FakeCalendarClient $calendar = null ] ): self;
+    private static function onlyPendingAttestations( CondorcetVote\ElephStamp\Timestamp $timestamp ): bool;
 
     // Methods
-    public function __construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, int $requiredCalendars = 1, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null ] );
+    public function __construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, ?int $requiredCalendars = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null ] );
     public function fakeCalendar( ): CondorcetVote\ElephStamp\Calendar\FakeCalendarClient;
     public function stamp( CondorcetVote\ElephStamp\FileToStamp $file ): CondorcetVote\ElephStamp\Receipt;
     public function stampMany( [ CondorcetVote\ElephStamp\FileToStamp ...$files ] ): array;

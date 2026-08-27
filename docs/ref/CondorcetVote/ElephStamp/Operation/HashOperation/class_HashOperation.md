@@ -34,6 +34,7 @@ detached timestamp.
 | [hashChunks(...)](method_hashChunks.md) | _Hash a sequence of chunks incrementally, in bounded memory._ |
 | [hashData(...)](method_hashData.md) | _Hash a whole in-memory payload._ |
 | [hashStream(...)](method_hashStream.md) | _Hash a stream from its current position to its end, in bounded memory._ |
+| [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](../Operation/method_serialize.md) | __ |
 | [tag(...)](../Operation/method_tag.md) | _The one-byte tag identifying this operation in the binary format._ |
 
@@ -61,6 +62,7 @@ abstract class CondorcetVote\ElephStamp\Operation\HashOperation extends Condorce
     final public function Operation->apply( string $message ): string;
     public function Operation->comparisonKey( ): string;
     abstract public function Operation->describe( ): string;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     abstract public function Operation->tag( ): string;
 
@@ -92,6 +94,7 @@ abstract class CondorcetVote\ElephStamp\Operation\HashOperation extends Condorce
     abstract public function Operation->describe( ): string;
     final public static function Operation::deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function Operation::fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
     abstract public function Operation->tag( ): string;
 

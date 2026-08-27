@@ -68,6 +68,7 @@ final class CondorcetVote\ElephStamp\DetachedTimestampFile
     // Properties
     public protected(set) readonly CondorcetVote\ElephStamp\Operation\HashOperation $fileHashOperation;
     public protected(set) readonly CondorcetVote\ElephStamp\Timestamp $timestamp;
+    private readonly string $fileDigest;
 
     // Static Methods
     public static function fromBytes( string $bytes ): self;
