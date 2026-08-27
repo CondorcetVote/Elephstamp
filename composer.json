@@ -9,7 +9,7 @@
         "symfony/http-client": "^8.1"
     },
     "require-dev": {
-        "pestphp/pest": "^4.7",
+        "pestphp/pest": "^5.1",
         "friendsofphp/php-cs-fixer": "^3.95",
         "phpstan/phpstan": "^2.2",
         "julien-boudry/php-reference": "^0.7.0"
