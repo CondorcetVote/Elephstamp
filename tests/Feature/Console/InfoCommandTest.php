@@ -119,10 +119,10 @@ it('reports an unreadable proof and keeps going', function (): void {
 
     $this->tester->assertCommandFailed();
 
+    // The error block carries two long paths, so compare without line wrapping.
     expect(unwrapped($this->tester->getDisplay()))->toContain('missing.ots')
-        ->and($this->tester->getDisplay())
-        ->toContain('does not exist')
-        ->toContain('https://alice.btc.calendar.opentimestamps.org');
+        ->toContain(unwrapped('does not exist or is not readable'))
+        ->and($this->tester->getDisplay())->toContain('https://alice.btc.calendar.opentimestamps.org');
 });
 
 it('abbreviates commitments unless verbose', function (): void {

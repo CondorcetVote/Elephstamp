@@ -119,7 +119,7 @@ it('does not overwrite an existing proof unless forced', function (): void {
 
     $tester->assertCommandFailed();
 
-    expect($tester->getDisplay())->toContain('already exists')
+    expect(unwrapped($tester->getDisplay()))->toContain(unwrapped('already exists. Pass --force'))
         ->and(file_get_contents($this->dir . '/a.txt.ots'))->toBe('precious');
 
     $tester->run(['stamp', 'files' => [$this->dir . '/a.txt'], '--force' => true]);
@@ -168,7 +168,7 @@ it('reports an unreadable file as an error', function (): void {
 
     $tester->assertCommandFailed();
 
-    expect($tester->getDisplay())->toContain('does not exist or is not readable');
+    expect(unwrapped($tester->getDisplay()))->toContain(unwrapped('does not exist or is not readable'));
 });
 
 it('shows the full digest of each file', function (): void {
