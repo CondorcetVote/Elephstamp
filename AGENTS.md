@@ -31,7 +31,7 @@ round-trip tests against real fixtures).
 
 ## Testing
 
-- Use **Pest 4** for everything. Tests live under `tests/`.
+- Use **Pest 5** for everything. Tests live under `tests/`.
 - Aim for thorough coverage: every public method, every exception path, every format option.
 - Run with `vendor/bin/pest`.
 
