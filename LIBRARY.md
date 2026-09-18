@@ -259,7 +259,9 @@ sha256
 A complete proof is a chain of computations from the file digest to the
 merkle root of a Bitcoin block. Everything in it is recomputed locally; the
 only external fact needed is the header of that block. `verify()` fetches it
-through a `BlockHeaderSource` and compares merkle roots:
+from a block explorer and compares merkle roots. **By default the explorer is
+mempool.space**; see [below](#choosing-where-block-headers-come-from) to pick
+another one.
 
 ```php
 use CondorcetVote\ElephStamp\ElephStamp;
@@ -267,7 +269,7 @@ use CondorcetVote\ElephStamp\FileToStamp;
 use CondorcetVote\ElephStamp\Receipt;
 use CondorcetVote\ElephStamp\Verify\Verdict;
 
-$client = new ElephStamp();   // asks mempool.space by default
+$client = new ElephStamp();
 
 $report = $client->verify(
     Receipt::fromPath('contract.pdf.ots'),
@@ -302,8 +304,10 @@ reach it; the attested date is the time of the earliest such block.
 
 ### Choosing where block headers come from
 
-Block headers come from a `BlockHeaderSource`. The interface is neutral, so
-the same verifier can be backed by a public explorer, a node, or a fake:
+Without configuration, block headers come from **mempool.space**
+(`Explorer::DEFAULT`). Any `BlockHeaderSource` can replace it; the interface
+is neutral, so the same verifier can be backed by another public explorer, a
+self-hosted one, several at once, or a fake:
 
 ```php
 use CondorcetVote\ElephStamp\Verify\CrossCheckingBlockHeaderSource;

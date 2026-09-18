@@ -199,7 +199,7 @@ written. This makes `upgrade` easy to script, see
 elephstamp verify contract.pdf.ots                          # original file found next to it
 elephstamp verify contract.pdf.ots --file archive/v2.pdf
 elephstamp verify contract.pdf.ots --digest 065470e2…       # without the file
-elephstamp verify contract.pdf.ots --explorer blockstream   # default: mempool
+elephstamp verify contract.pdf.ots --explorer blockstream   # instead of the default, mempool.space
 elephstamp verify contract.pdf.ots -e mempool -e blockstream            # both must agree
 elephstamp verify contract.pdf.ots --explorer-url https://esplora.internal/api
 elephstamp verify proofs/*.ots --min-confirmations 1 --json
@@ -208,9 +208,11 @@ elephstamp verify proofs/*.ots --min-confirmations 1 --json
 Recomputes everything the proof contains, offline: the file digest, every
 operation, the transaction, the merkle branch, down to the merkle root of each
 block the proof names. Then asks a block explorer for the header of those
-blocks. A proof is **verified** when a block's merkle root equals the one the
-proof leads to, and the block is buried under enough confirmations. The
-verdict opens the report as a full-width banner:
+blocks. **By default the explorer is mempool.space.** Pick blockstream.info
+with `--explorer blockstream`, or any Esplora instance with `--explorer-url`.
+A proof is **verified** when a block's merkle root equals the one the proof
+leads to, and the block is buried under enough confirmations. The verdict
+opens the report as a full-width banner:
 
 ```
  VERIFIED
@@ -256,7 +258,7 @@ release.
 | --- | --- |
 | `--file=PATH` | The original file the proof should be for. Found automatically as `<proof without .ots>` when present. Single proof only. |
 | `--digest=HEX` | Its SHA-256 digest, when you do not have the file. Single proof only. |
-| `-e, --explorer=NAME` | `mempool` (default) or `blockstream`. Repeatable: all named explorers must agree. |
+| `-e, --explorer=NAME` | Which explorer to ask: `mempool` (mempool.space, the default) or `blockstream` (blockstream.info). Repeatable: all named explorers must agree. |
 | `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
 | `--min-confirmations=N` | Depth a block needs before its attestation counts, itself included. Default `6`. |
 | `--timeout=SECONDS` | Give up on an explorer after this long. |

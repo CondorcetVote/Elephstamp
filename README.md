@@ -31,9 +31,9 @@ reference tooling.
 - Creating timestamp requests and submitting them to calendar servers.
 - Following a proof's status and fetching the completed `.ots` once the
   calendars can provide a blockchain attestation.
-- Verifying a completed proof against the Bitcoin blockchain, through public
-  block explorers (mempool.space, blockstream.info or any Esplora instance),
-  with the block header's proof of work checked locally.
+- Verifying a completed proof against the Bitcoin blockchain, through a public
+  block explorer: mempool.space by default, blockstream.info or any Esplora
+  instance on request. The block header's proof of work is checked locally.
 - An `elephstamp` **command-line tool** exposing all of the above, with
   readable reports on what every calendar is up to.
 - A built-in **fake mode** for tests and local/integration environments.
