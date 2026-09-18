@@ -1,6 +1,6 @@
 {
     "name": "condorcet-vote/elephstamp",
-    "description": "Modern, object-oriented PHP library for OpenTimestamps: register timestamp proofs with calendar servers and collect the completed .ots certification.",
+    "description": "OpenTimestamps library and command-line tool for PHP.",
     "type": "library",
     "keywords": [
         "opentimestamps",
