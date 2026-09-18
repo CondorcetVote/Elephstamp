@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CondorcetVote\ElephStamp\Exception\{InvalidInputException};
+use CondorcetVote\ElephStamp\Exception\InvalidInputException;
 use CondorcetVote\ElephStamp\Verify\{AnchorOutcome, FakeBlockHeaderSource, Verdict, Verifier};
 use CondorcetVote\ElephStamp\{ElephStamp, FileToStamp, Receipt};
 
