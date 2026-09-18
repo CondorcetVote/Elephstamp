@@ -5,16 +5,11 @@ declare(strict_types=1);
 use CondorcetVote\ElephStamp\Exception\BlockSourceException;
 use CondorcetVote\ElephStamp\Verify\BlockHeader;
 
-/**
- * The genuine header of Bitcoin block 967571, as returned by mempool.space.
- */
-const HEADER_967571 = '0060b62931171a874b5c03a881e68c7c0b273d237aae1cd0f04100000000000000000000abbfd07a03a3484f2abe54f23c20bbd9f33adb0dfcb4f19394be9f8e271d8f097e58ad6a5e3502171a8030e6';
-
 it('parses a genuine header, recomputing its hash and checking its proof of work', function (): void {
     $header = BlockHeader::fromRawHeader(967_571, hex2bin(HEADER_967571));
 
     expect($header->height)->toBe(967_571)
-        ->and($header->hashHex())->toBe('00000000000000000000e32d9a295b892cdf1dcbdeb52461fb0f5e32cefa8364')
+        ->and($header->hashHex())->toBe(BLOCK_HASH_967571)
         ->and($header->merkleRootHex())->toBe('098f1d278e9fbe9493f1b4fc0ddb3af3d9bb203cf254be2a4f48a3037ad0bfab')
         ->and($header->time->format(\DATE_ATOM))->toBe('2026-09-18T15:27:58+00:00')
         ->and($header->rawHeader)->toBe(hex2bin(HEADER_967571))

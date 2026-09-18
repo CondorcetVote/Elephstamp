@@ -68,9 +68,10 @@ it('flags a digest mismatch against --file and fails', function (): void {
 
     $display = $this->tester->getDisplay();
 
-    // The banner comes first, before any other detail of the report.
+    // The banner comes first, before any other detail of the report. The
+    // sentence carries a long path, so compare without line wrapping.
     expect($display)->toContain('DIGEST MISMATCH')
-        ->toContain('is not the file this proof was made for')
+        ->and(unwrapped($display))->toContain(unwrapped('is not the file this proof was made for'))
         ->and(strpos($display, 'DIGEST MISMATCH'))->toBeLessThan((int) strpos($display, 'Status'));
 });
 

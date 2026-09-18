@@ -53,8 +53,8 @@ it('fails loudly when the file does not match', function (): void {
     $this->tester->assertCommandFailed();
 
     expect($this->tester->getDisplay())->toContain('VERIFICATION FAILED')
-        ->toContain('is not the file this proof was made for')
-        ->toContain('DIGEST MISMATCH');
+        ->toContain('DIGEST MISMATCH')
+        ->and(unwrapped($this->tester->getDisplay()))->toContain(unwrapped('is not the file this proof was made for'));
 });
 
 it('accepts a digest instead of the file', function (): void {

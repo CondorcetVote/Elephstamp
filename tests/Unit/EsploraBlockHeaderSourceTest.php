@@ -7,8 +7,6 @@ use CondorcetVote\ElephStamp\Verify\{CrossCheckingBlockHeaderSource, EsploraBloc
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
-const BLOCK_HASH = '00000000000000000000e32d9a295b892cdf1dcbdeb52461fb0f5e32cefa8364';
-
 /**
  * A mock Esplora answering like mempool.space did for block 967571.
  *
@@ -25,8 +23,8 @@ function esplora(array $overrides = [], array &$requests = []): EsploraBlockHead
         }
 
         return match ($path) {
-            'block-height/967571' => new MockResponse(BLOCK_HASH),
-            'block/' . BLOCK_HASH . '/header' => new MockResponse(HEADER_967571),
+            'block-height/967571' => new MockResponse(BLOCK_HASH_967571),
+            'block/' . BLOCK_HASH_967571 . '/header' => new MockResponse(HEADER_967571),
             'blocks/tip/height' => new MockResponse('967620'),
             default => new MockResponse('', ['http_code' => 404]),
         };
@@ -41,13 +39,13 @@ it('fetches the hash then the raw header, and checks they agree', function (): v
 
     $header = $source->blockHeader(967_571);
 
-    expect($header->hashHex())->toBe(BLOCK_HASH)
+    expect($header->hashHex())->toBe(BLOCK_HASH_967571)
         ->and($header->merkleRootHex())->toBe('098f1d278e9fbe9493f1b4fc0ddb3af3d9bb203cf254be2a4f48a3037ad0bfab')
         ->and($source->tipHeight())->toBe(967_620)
         ->and($source->describe())->toBe('test explorer')
         ->and($requests)->toBe([
             'https://esplora.test/api/block-height/967571',
-            'https://esplora.test/api/block/' . BLOCK_HASH . '/header',
+            'https://esplora.test/api/block/' . BLOCK_HASH_967571 . '/header',
             'https://esplora.test/api/blocks/tip/height',
         ]);
 });
@@ -60,7 +58,7 @@ it('rejects a header that does not hash to the announced block hash', function (
     // The genuine header of another block: valid proof of work, wrong hash.
     $genesis = '0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c';
 
-    esplora(['block/' . BLOCK_HASH . '/header' => $genesis])->blockHeader(967_571);
+    esplora(['block/' . BLOCK_HASH_967571 . '/header' => $genesis])->blockHeader(967_571);
 })->throws(BlockSourceException::class, 'does not match the announced block hash');
 
 it('rejects malformed answers', function (string $path, string $body, string $message): void {
@@ -74,7 +72,7 @@ it('rejects malformed answers', function (string $path, string $body, string $me
     }
 })->with([
     'bad hash' => ['block-height/967571', 'not-a-hash', 'invalid hash'],
-    'bad header' => ['block/' . BLOCK_HASH . '/header', 'abcd', 'invalid header'],
+    'bad header' => ['block/' . BLOCK_HASH_967571 . '/header', 'abcd', 'invalid header'],
     'bad tip' => ['blocks/tip/height', 'soon', 'invalid chain tip'],
     'oversized' => ['blocks/tip/height', str_repeat('9', 2_000), 'size limit'],
 ]);
@@ -119,7 +117,7 @@ it('cross-checks several sources and fails when they disagree', function (): voi
 
     $agreeing = new CrossCheckingBlockHeaderSource($a, $b);
 
-    expect($agreeing->blockHeader(967_571)->hashHex())->toBe(BLOCK_HASH)
+    expect($agreeing->blockHeader(967_571)->hashHex())->toBe(BLOCK_HASH_967571)
         ->and($agreeing->tipHeight())->toBe(967_620)
         ->and($agreeing->describe())->toBe('test explorer and test explorer (cross-checked)');
 
