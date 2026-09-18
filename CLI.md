@@ -12,6 +12,7 @@ calendar server has done with them. For the PHP API, see
 - [Conventions](#conventions)
 - [`stamp` — create proofs](#stamp--create-proofs)
 - [`upgrade` — collect confirmations](#upgrade--collect-confirmations)
+- [`verify` — check against the blockchain](#verify--check-against-the-blockchain)
 - [`info` — understand a proof](#info--understand-a-proof)
 - [`tree` — every hash](#tree--every-hash)
 - [`calendars` — the defaults](#calendars--the-defaults)
@@ -42,6 +43,7 @@ Inside a project that already depends on the library, the command is at
 elephstamp stamp contract.pdf            # → contract.pdf.ots, pending
 # ... a few hours later ...
 elephstamp upgrade contract.pdf.ots      # collects the Bitcoin attestation
+elephstamp verify contract.pdf.ots       # checks it against the blockchain via a block explorer
 elephstamp info contract.pdf.ots         # what the proof says, calendar by calendar
 elephstamp tree contract.pdf.ots         # every operation and hash, for checking by hand
 ```
@@ -60,7 +62,9 @@ elephstamp tree contract.pdf.ots         # every operation and hash, for checkin
   available) replaces it with a machine-readable document.
 - Exit codes are part of the contract and listed for each command below.
   Across all commands: `0` success, `1` bad usage or an error (unreadable file,
-  write failure, too few calendars); `upgrade` adds `2` for "still pending".
+  write failure, too few calendars, failed verification); `upgrade` and
+  `verify` add `2` for "not yet": still pending, awaiting confirmations,
+  source unreachable.
 
 ## `stamp` — create proofs
 
@@ -188,6 +192,81 @@ With several proofs a summary closes the report:
 (and nothing went wrong); `1` bad usage, or a proof could not be read or
 written. This makes `upgrade` easy to script, see
 [Automating with cron](#automating-with-cron).
+
+## `verify` — check against the blockchain
+
+```bash
+elephstamp verify contract.pdf.ots                          # original file found next to it
+elephstamp verify contract.pdf.ots --file archive/v2.pdf
+elephstamp verify contract.pdf.ots --digest 065470e2…       # without the file
+elephstamp verify contract.pdf.ots --explorer blockstream   # default: mempool
+elephstamp verify contract.pdf.ots -e mempool -e blockstream            # both must agree
+elephstamp verify contract.pdf.ots --explorer-url https://esplora.internal/api
+elephstamp verify proofs/*.ots --min-confirmations 1 --json
+```
+
+Recomputes everything the proof contains, offline: the file digest, every
+operation, the transaction, the merkle branch, down to the merkle root of each
+block the proof names. Then asks a block explorer for the header of those
+blocks. A proof is **verified** when a block's merkle root equals the one the
+proof leads to, and the block is buried under enough confirmations. The
+verdict opens the report as a full-width banner:
+
+```
+ VERIFIED
+
+ contract.pdf existed before 2026-09-18 15:27:58 UTC (Bitcoin block 967571).
+
+  Original         contract.pdf — digest matches the proof
+  Proof            sha256 digest 065470e2…, 3 Bitcoin attestations recomputed offline
+  Block headers    mempool.space and blockstream.info (cross-checked) — a third party, trusted for block headers only
+  Required depth   6 confirmations
+
+  Block    Merkle root (proof)   Merkle root (block)   Mined at (UTC)        Confirmations   Result
+  967571   098f1d27…7ad0bfab     098f1d27…7ad0bfab     2026-09-18 15:27:58   50              verified — merkle roots match
+  967572   4c0e81a2…91d73f5e     4c0e81a2…91d73f5e     2026-09-18 15:31:09   49              verified — merkle roots match
+  967603   b7d2c0f1…2ae4c9d0     b7d2c0f1…2ae4c9d0     2026-09-18 21:02:44   18              verified — merkle roots match
+```
+
+`-v` prints full merkle roots and the block hashes.
+
+| Banner | Meaning | Exit |
+| --- | --- | --- |
+| `VERIFIED` | The file matches the proof (when checked) and at least one block confirms it. The date is the time of the earliest such block. | `0` |
+| `AWAITING CONFIRMATIONS` | The merkle root matches but every matching block is still shallower than `--min-confirmations`. | `2` |
+| `PENDING` | No Bitcoin attestation yet; run `upgrade` first. | `2` |
+| `INCONCLUSIVE` | Attestations exist but no header could be checked (explorer unreachable, unknown block). | `2` |
+| `VERIFICATION FAILED` | The file is not the one the proof commits to, or a block's merkle root differs from the proof's: corrupt, forged, or wrong block. | `1` |
+
+Per block, the *Result* column reads `verified`, `matches, awaiting
+confirmations (n of 6)`, `MISMATCH`, `unavailable — <reason>` or `not
+computable` (below an operation this tool cannot compute).
+
+**What is trusted.** Only the block header comes from outside, and the
+explorer is a third party you trust for it. Two things bound that trust. The
+explorer's raw 80-byte header is parsed locally: its hash is recomputed and
+checked against the difficulty the header itself declares, so an explorer
+cannot slip in a bogus merkle root without forging a valid proof of work.
+And several explorers can be required to agree: repeat `--explorer` (or add
+`--explorer-url`) and the verification only passes if they all return the
+same header. Verifying against your own Bitcoin node is planned for a later
+release.
+
+| Option | Effect |
+| --- | --- |
+| `--file=PATH` | The original file the proof should be for. Found automatically as `<proof without .ots>` when present. Single proof only. |
+| `--digest=HEX` | Its SHA-256 digest, when you do not have the file. Single proof only. |
+| `-e, --explorer=NAME` | `mempool` (default) or `blockstream`. Repeatable: all named explorers must agree. |
+| `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
+| `--min-confirmations=N` | Depth a block needs before its attestation counts, itself included. Default `6`. |
+| `--timeout=SECONDS` | Give up on an explorer after this long. |
+| `--json` | Machine-readable output, see [JSON output](#json-output). |
+
+Without an original file or digest, the banner says so: the proof itself is
+verified, not that it belongs to a given file.
+
+**Exit codes:** `0` verified; `1` failed, bad usage, or an unreadable proof;
+`2` not verifiable yet.
 
 ## `info` — understand a proof
 
@@ -336,11 +415,12 @@ edge the hashes read `(not computable)`.
 ## `calendars` — the defaults
 
 Lists the calendar servers `stamp` submits to by default, the m-of-n
-threshold, and the host patterns `upgrade` and `info` trust by default.
+threshold, the host patterns `upgrade` and `info` trust by default, and the
+block explorers `verify` can consult.
 
 ## JSON output
 
-`info` and `upgrade` accept `--json`. One proof yields one object; several
+`info`, `upgrade` and `verify` accept `--json`. One proof yields one object; several
 proofs yield a list, in argument order. A proof that could not be read yields
 `{"receipt": "...", "error": "..."}` in its slot, and the exit code is `1`.
 
@@ -414,6 +494,45 @@ be determined.
 there is one. `saved_to` is `null`
 when nothing was written (no change, or `--dry-run`).
 
+`verify --json`:
+
+```json
+{
+    "receipt": "contract.pdf.ots",
+    "verdict": "verified",
+    "attested_at": "2026-09-18T15:27:58+00:00",
+    "attesting_block_height": 967571,
+    "file": {
+        "hash": "sha256",
+        "digest": "065470e2…5d7f73e0",
+        "subject": "contract.pdf",
+        "digest_matches": true
+    },
+    "source": "mempool.space",
+    "required_confirmations": 6,
+    "bitcoin_attestations": [
+        {
+            "block_height": 967571,
+            "outcome": "verified",
+            "proof_merkle_root": "098f1d27…7ad0bfab",
+            "block_merkle_root": "098f1d27…7ad0bfab",
+            "block_hash": "00000000…cefa8364",
+            "block_time": "2026-09-18T15:27:58+00:00",
+            "confirmations": 50,
+            "transaction_id": "0088fa0a…69d243f7",
+            "error": null
+        }
+    ]
+}
+```
+
+`verdict` is one of `verified`, `awaiting_confirmations`, `pending`,
+`inconclusive`, `failed`; `outcome` one of `verified`,
+`awaiting_confirmations`, `merkle_root_mismatch`, `block_unavailable`,
+`not_computable`. `subject` is the file path or `digest <hex>`, and
+`digest_matches` is `null` when nothing was checked. `attested_at` is only
+set for a verified proof.
+
 ## Security: the upgrade whitelist
 
 A proof embeds the URIs of the calendars to poll. A proof is untrusted input:
@@ -475,10 +594,9 @@ eval "$(elephstamp completion bash)"
 
 ## What the tool does not do
 
-- **No on-chain verification.** `info` and `upgrade` report the block height
-  a proof *claims*; nothing is checked against a Bitcoin node. Use the
-  transaction id and merkle root shown by `info`, or a dedicated verifier, for
-  that.
+- **No verification against your own node yet.** `verify` relies on public
+  block explorers for block headers; asking a node you run is planned for a
+  later release. `info` and `upgrade` themselves never check anything on-chain.
 - **No non-Bitcoin notaries.** Litecoin or Ethereum attestations are preserved
   and listed as unsupported, never interpreted or upgraded.
 - **No pruning or editing of proofs**: the tool only ever adds attestations.

@@ -20,8 +20,8 @@ reference tooling.
 
 | | |
 | --- | --- |
-| **[LIBRARY.md](LIBRARY.md)** | The PHP API: stamping, upgrading, reading receipts, fake mode for tests, configuration, security. |
-| **[CLI.md](CLI.md)** | The `elephstamp` command: `stamp`, `upgrade`, `info`, `tree`, `calendars`, JSON output, exit codes. |
+| **[LIBRARY.md](LIBRARY.md)** | The PHP API: stamping, upgrading, verifying, reading receipts, fake mode for tests, configuration, security. |
+| **[CLI.md](CLI.md)** | The `elephstamp` command: `stamp`, `upgrade`, `verify`, `info`, `tree`, `calendars`, JSON output, exit codes. |
 | [docs/readme.md](docs/readme.md) | Generated class-by-class API reference. |
 
 ## Scope
@@ -31,15 +31,19 @@ reference tooling.
 - Creating timestamp requests and submitting them to calendar servers.
 - Following a proof's status and fetching the completed `.ots` once the
   calendars can provide a blockchain attestation.
+- Verifying a completed proof against the Bitcoin blockchain, through public
+  block explorers (mempool.space, blockstream.info or any Esplora instance),
+  with the block header's proof of work checked locally.
 - An `elephstamp` **command-line tool** exposing all of the above, with
   readable reports on what every calendar is up to.
 - A built-in **fake mode** for tests and local/integration environments.
 
-**Out of scope (by design)**
+**Out of scope (for now)**
 
-- No on-chain verification. ElephStamp reports what a proof *claims* (e.g. the
-  Bitcoin block height) but never talks to a Bitcoin node to verify it. Use a
-  dedicated verifier for that.
+- Verifying against a Bitcoin node you run. The block-header abstraction is
+  ready for it, but only explorers are implemented; an explorer is a third
+  party you trust for block headers.
+- Non-Bitcoin attestations (Litecoin, Ethereum): preserved, never interpreted.
 
 ## Requirements
 
@@ -85,6 +89,10 @@ if ($client->upgrade($receipt)) {
 
 if ($receipt->isComplete()) {
     echo 'Anchored in Bitcoin block ' . $receipt->bitcoinBlockHeight();
+
+    // Check it against the chain, through a public block explorer.
+    $report = $client->verify($receipt, FileToStamp::fromPath('contract.pdf'));
+    echo $report->verdict()->name;   // Verified
 }
 ```
 
@@ -93,6 +101,7 @@ From the shell:
 ```bash
 elephstamp stamp contract.pdf         # → contract.pdf.ots
 elephstamp upgrade contract.pdf.ots   # later: fetch the Bitcoin attestation
+elephstamp verify contract.pdf.ots    # check it against the blockchain via a block explorer
 elephstamp info contract.pdf.ots      # what each calendar did, block height, digest check
 ```
 

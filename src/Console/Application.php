@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace CondorcetVote\ElephStamp\Console;
 
 use Composer\InstalledVersions;
-use CondorcetVote\ElephStamp\Console\Command\{CalendarsCommand, InfoCommand, StampCommand, TreeCommand, UpgradeCommand};
+use CondorcetVote\ElephStamp\Console\Command\{CalendarsCommand, InfoCommand, StampCommand, TreeCommand, UpgradeCommand, VerifyCommand};
 use OutOfBoundsException;
 use Symfony\Component\Console\Application as BaseApplication;
 
@@ -27,6 +27,7 @@ final class Application extends BaseApplication
 
         $this->addCommand(new StampCommand($clientFactory));
         $this->addCommand(new UpgradeCommand($clientFactory));
+        $this->addCommand(new VerifyCommand($clientFactory));
         $this->addCommand(new InfoCommand);
         $this->addCommand(new TreeCommand);
         $this->addCommand(new CalendarsCommand);

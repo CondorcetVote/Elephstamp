@@ -11,12 +11,12 @@ use CondorcetVote\ElephStamp\Calendar\{CalendarClient, CalendarResponse, Calenda
 use CondorcetVote\ElephStamp\Exception\{InvalidInputException, SerializationException, StampingException};
 use CondorcetVote\ElephStamp\Operation\{Append, HashOperation, Sha256};
 use CondorcetVote\ElephStamp\Upgrade\{CalendarUpgradeResult, UpgradeOutcome, UpgradeReport};
+use CondorcetVote\ElephStamp\Verify\{BlockHeaderSource, Explorer, FakeBlockHeaderSource, VerificationReport, Verifier};
 
 /**
- * The library entry point: submit timestamp requests to calendar servers and
- * refresh receipts as they get confirmed.
- *
- * Verification against the Bitcoin blockchain is deliberately out of scope.
+ * The library entry point: submit timestamp requests to calendar servers,
+ * refresh receipts as they get confirmed, and verify them against block
+ * headers obtained from a {@see BlockHeaderSource}.
  */
 final class ElephStamp
 {
@@ -71,12 +71,15 @@ final class ElephStamp
 
     private readonly int $requiredCalendars;
 
+    private ?BlockHeaderSource $blockHeaderSource;
+
     /**
      * @param list<string>|null $calendarUrls      calendars to submit to (defaults to {@see DEFAULT_CALENDAR_URLS})
      * @param int|null          $requiredCalendars minimum number of calendars that must accept a stamp (the "m" of
      *                                             m-of-n); defaults to 2 — like the reference client — or to 1 when
      *                                             a single calendar is configured
      * @param list<string>|null $upgradeWhitelist   host patterns an upgrade may contact (defaults to {@see DEFAULT_UPGRADE_WHITELIST}); pass your own when using private calendars
+     * @param BlockHeaderSource|null $blockHeaderSource where {@see verify()} gets block headers; defaults to the {@see Explorer::DEFAULT} explorer
      */
     public function __construct(
         ?CalendarClient $calendarClient = null,
@@ -85,7 +88,9 @@ final class ElephStamp
         ?HashOperation $hashOperation = null,
         ?RandomSource $randomSource = null,
         ?array $upgradeWhitelist = null,
+        ?BlockHeaderSource $blockHeaderSource = null,
     ) {
+        $this->blockHeaderSource = $blockHeaderSource;
         $this->calendarClient = $calendarClient ?? new HttpCalendarClient;
         $this->calendarUrls = $calendarUrls ?? self::DEFAULT_CALENDAR_URLS;
         $this->hashOperation = $hashOperation ?? new Sha256;
@@ -126,14 +131,30 @@ final class ElephStamp
      * Pass the same {@see FakeCalendarClient} to several calls to share its
      * confirmation state, or read it back with {@see fakeCalendar()}.
      */
-    public static function fake(?FakeCalendarClient $calendar = null): self
+    public static function fake(?FakeCalendarClient $calendar = null, ?FakeBlockHeaderSource $blockHeaderSource = null): self
     {
         return new self(
             calendarClient: $calendar ?? new FakeCalendarClient,
             calendarUrls: [self::FAKE_CALENDAR_URL],
             randomSource: new DeterministicRandomSource,
             upgradeWhitelist: [self::FAKE_CALENDAR_URL],
+            blockHeaderSource: $blockHeaderSource ?? new FakeBlockHeaderSource,
         );
+    }
+
+    /**
+     * The fake block source backing this client, to register the blocks a
+     * receipt should verify against.
+     *
+     * @throws InvalidInputException if this client is not in fake mode
+     */
+    public function fakeBlockSource(): FakeBlockHeaderSource
+    {
+        if (!$this->blockHeaderSource instanceof FakeBlockHeaderSource) {
+            throw new InvalidInputException('This client is not backed by a fake block source');
+        }
+
+        return $this->blockHeaderSource;
     }
 
     /**
@@ -314,6 +335,22 @@ final class ElephStamp
         }
 
         return $heights === [] ? null : min($heights);
+    }
+
+    /**
+     * Check a receipt against the blockchain, through the configured block
+     * header source, and optionally that it is the proof of the given file.
+     *
+     * See {@see Verifier} for what is checked and what the verdict means.
+     *
+     * @param int $requiredConfirmations depth a block needs before its attestation counts as final
+     */
+    public function verify(Receipt $receipt, ?FileToStamp $file = null, int $requiredConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS): VerificationReport
+    {
+        // Built lazily so that stamping and upgrading never touch an explorer.
+        $this->blockHeaderSource ??= Explorer::DEFAULT->source();
+
+        return new Verifier($this->blockHeaderSource, $requiredConfirmations)->verify($receipt, $file);
     }
 
     private function merkleLeaf(Timestamp $fileTimestamp, bool $useNonce): Timestamp

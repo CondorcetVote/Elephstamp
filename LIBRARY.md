@@ -11,6 +11,9 @@ This document covers the PHP API. For the `elephstamp` command-line tool, see
 - [Describing what to stamp](#describing-what-to-stamp)
 - [Reading a receipt](#reading-a-receipt)
   - [Locating the Bitcoin transaction](#locating-the-bitcoin-transaction)
+- [Verifying against the blockchain](#verifying-against-the-blockchain)
+  - [Choosing where block headers come from](#choosing-where-block-headers-come-from)
+  - [Verifying in fake mode](#verifying-in-fake-mode)
 - [Testing: fake mode](#testing-fake-mode)
 - [Configuration](#configuration)
 - [Exceptions](#exceptions)
@@ -251,6 +254,111 @@ sha256
  -> …
 ```
 
+## Verifying against the blockchain
+
+A complete proof is a chain of computations from the file digest to the
+merkle root of a Bitcoin block. Everything in it is recomputed locally; the
+only external fact needed is the header of that block. `verify()` fetches it
+through a `BlockHeaderSource` and compares merkle roots:
+
+```php
+use CondorcetVote\ElephStamp\ElephStamp;
+use CondorcetVote\ElephStamp\FileToStamp;
+use CondorcetVote\ElephStamp\Receipt;
+use CondorcetVote\ElephStamp\Verify\Verdict;
+
+$client = new ElephStamp();   // asks mempool.space by default
+
+$report = $client->verify(
+    Receipt::fromPath('contract.pdf.ots'),
+    FileToStamp::fromPath('contract.pdf'),   // optional: also check it is *this* file's proof
+);
+
+switch ($report->verdict()) {
+    case Verdict::Verified:
+        echo 'Existed before ', $report->attestedAt()->format(DATE_ATOM),
+            ' (block ', $report->attestingAnchor()->blockHeight(), ')';
+        break;
+    case Verdict::AwaitingConfirmations:  // merkle root matches, block still too recent
+    case Verdict::Pending:                // no Bitcoin attestation yet: upgrade first
+    case Verdict::Inconclusive:           // the source could not answer
+        break;
+    case Verdict::Failed:                 // wrong file, or the block does not commit to the proof
+        break;
+}
+```
+
+The report holds `fileMatches` (null when no file was given), one
+`AnchorVerification` per Bitcoin attestation with the block header, the
+number of confirmations and an `AnchorOutcome` (`Verified`,
+`AwaitingConfirmations`, `MerkleRootMismatch`, `BlockUnavailable`,
+`NotComputable`), plus `requiredConfirmations` and the `source` consulted.
+`verify()` never throws for a source failure: the affected attestations are
+reported as unavailable.
+
+A block counts once it is buried under six confirmations (`Verifier::DEFAULT_REQUIRED_CONFIRMATIONS`);
+pass a third argument to change that. `Verified` needs a single attestation to
+reach it; the attested date is the time of the earliest such block.
+
+### Choosing where block headers come from
+
+Block headers come from a `BlockHeaderSource`. The interface is neutral, so
+the same verifier can be backed by a public explorer, a node, or a fake:
+
+```php
+use CondorcetVote\ElephStamp\Verify\CrossCheckingBlockHeaderSource;
+use CondorcetVote\ElephStamp\Verify\EsploraBlockHeaderSource;
+use CondorcetVote\ElephStamp\Verify\Explorer;
+use CondorcetVote\ElephStamp\Verify\Verifier;
+
+// One of the known public explorers (no API key needed).
+$client = new ElephStamp(blockHeaderSource: Explorer::Blockstream->source());
+
+// Any other Esplora-compatible instance, e.g. self-hosted (https only).
+$client = new ElephStamp(blockHeaderSource: new EsploraBlockHeaderSource('https://esplora.internal/api'));
+
+// Several sources that must all agree, to bound the trust put in any one of them.
+$client = new ElephStamp(blockHeaderSource: new CrossCheckingBlockHeaderSource(
+    Explorer::MempoolSpace->source(),
+    Explorer::Blockstream->source(),
+));
+
+// The verifier alone, without the facade.
+$report = new Verifier(Explorer::MempoolSpace->source(), requiredConfirmations: 1)->verify($receipt);
+```
+
+An explorer is a third party you trust for block headers. Two things limit
+that trust: the Esplora driver fetches the raw 80-byte header, recomputes its
+hash and checks its proof of work locally, so an explorer cannot serve a
+bogus merkle root without forging a valid header; and cross-checking makes
+several explorers vouch for the same header. Verifying against a Bitcoin node
+you run is planned as another `BlockHeaderSource` implementation.
+
+Explorer traffic is hardened like calendar traffic: https only, redirects
+never followed, tiny response cap, timeouts on idle and total duration.
+
+### Verifying in fake mode
+
+`ElephStamp::fake()` comes with a `FakeBlockHeaderSource`. Register the blocks
+a receipt claims, and verification works offline:
+
+```php
+$client = ElephStamp::fake();
+
+$receipt = $client->stamp(FileToStamp::fromContent('hello'));
+$client->fakeCalendar()->confirmAll(812_345);
+$client->upgrade($receipt);
+
+// Register a block 812345 whose merkle root is the one the receipt leads to.
+$client->fakeBlockSource()->anchor($receipt, new DateTimeImmutable('2024-06-01 12:00 UTC'));
+
+$client->verify($receipt)->verdict();   // Verdict::Verified
+
+// Simulate a chain that has not grown yet, or a block that does not match.
+$client->fakeBlockSource()->setTipHeight(812_346);        // → AwaitingConfirmations
+$client->fakeBlockSource()->addBlock(812_345, $otherRoot); // throws: a fake height holds one root
+```
+
 ## Testing: fake mode
 
 `ElephStamp::fake()` returns a fully offline client. Proofs are deterministic
@@ -353,3 +461,7 @@ Every exception implements `CondorcetVote\ElephStamp\Exception\ElephStampExcepti
 - `SerializationException` — malformed or unsupported `.ots` data.
 - `CalendarException` — a calendar was unreachable or misbehaved.
 - `StampingException` — too few calendars accepted a stamp (m-of-n not met).
+- `BlockSourceException` — a block header source was unreachable, knows no
+  such block, or answered inconsistently. `verify()` catches it for you and
+  reports the attestation as unavailable; you only meet it when calling a
+  `BlockHeaderSource` directly.

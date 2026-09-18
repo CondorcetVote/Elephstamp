@@ -19,7 +19,9 @@ it('lists the default calendars and whitelist', function (): void {
         expect($tester->getDisplay())->toContain($url);
     }
 
-    expect($tester->getDisplay())->toContain('2 of these 4 calendars');
+    expect($tester->getDisplay())->toContain('2 of these 4 calendars')
+        ->toContain('mempool.space')
+        ->toContain('--explorer blockstream');
 });
 
 it('registers every command under a name and version', function (): void {
@@ -27,5 +29,5 @@ it('registers every command under a name and version', function (): void {
 
     expect($application->getName())->toBe('ElephStamp')
         ->and($application->getVersion())->not->toBe('')
-        ->and(array_keys($application->all()))->toContain('stamp', 'upgrade', 'info', 'tree', 'calendars');
+        ->and(array_keys($application->all()))->toContain('stamp', 'upgrade', 'verify', 'info', 'tree', 'calendars');
 });

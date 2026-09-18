@@ -78,12 +78,19 @@ scratch script and verify before committing.
   a thin presentation layer: anything a command needs to know must be
   available through the library's public API (add it there first).
 
-**Out of scope (deliberately)**
+- Verifying a complete proof against the Bitcoin blockchain through a
+  `Verify\BlockHeaderSource`. The interface is neutral (explorer, node, fake);
+  only the Esplora driver (`EsploraBlockHeaderSource`, behind the `Explorer`
+  enum for mempool.space and blockstream.info) is implemented. Never hard-code
+  an explorer's API in the verifier: add a driver.
 
-- No on-chain verification. The library reports what a proof *claims* (e.g.
-  Bitcoin block height) but never contacts a Bitcoin node. Non-Bitcoin
-  attestations (Litecoin, Ethereum/Keccak-256) are recognised only enough to be
-  preserved or clearly rejected, not verified.
+**Out of scope (for now)**
+
+- Verifying against a Bitcoin node: planned as another `BlockHeaderSource`,
+  not implemented. Do not expose or mention a `--node` option in the CLI
+  until it exists. Non-Bitcoin attestations (Litecoin,
+  Ethereum/Keccak-256) are recognised only enough to be preserved or clearly
+  rejected, not verified.
 
 ## Architecture notes
 
@@ -110,6 +117,12 @@ scratch script and verify before committing.
 - `upgrade()` is a thin wrapper over `upgradeWithReport()`, which returns an
   `Upgrade\UpgradeReport` describing what every calendar answered. Keep the
   two in sync: any change to the polling logic goes in `upgradeWithReport()`.
+- Verification recomputes everything locally and asks the source only for
+  block headers. A source returning the raw 80-byte header goes through
+  `BlockHeader::fromRawHeader()`, which recomputes the hash and checks the
+  proof of work; keep that check, it is what limits the trust put in an
+  explorer. Explorer answers are untrusted input: https only, no redirects,
+  size caps, strict parsing.
 - The CLI lives under `Console/`. Commands are Symfony invokable commands
   (`#[AsCommand]` + `#[Argument]`/`#[Option]` attributes). They obtain their
   `ElephStamp` through the `Console\ClientFactory` seam so tests can run them

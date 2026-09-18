@@ -8,6 +8,7 @@ use CondorcetVote\ElephStamp\Calendar\{CalendarClient, FakeCalendarClient};
 use CondorcetVote\ElephStamp\Console\{ClientFactory, ClientOptions};
 use CondorcetVote\ElephStamp\ElephStamp;
 use CondorcetVote\ElephStamp\Random\DeterministicRandomSource;
+use CondorcetVote\ElephStamp\Verify\FakeBlockHeaderSource;
 
 /**
  * Builds offline clients for the CLI tests and records the options it was given.
@@ -19,6 +20,7 @@ final class FakeClientFactory implements ClientFactory
     public function __construct(
         public readonly CalendarClient $calendar = new FakeCalendarClient,
         public readonly string $calendarUrl = ElephStamp::FAKE_CALENDAR_URL,
+        public readonly FakeBlockHeaderSource $blocks = new FakeBlockHeaderSource,
     ) {}
 
     public function create(ClientOptions $options): ElephStamp
@@ -34,6 +36,7 @@ final class FakeClientFactory implements ClientFactory
             calendarUrls: [$this->calendarUrl],
             randomSource: new DeterministicRandomSource,
             upgradeWhitelist: $whitelist === [] ? ['https://nothing.allowed.example'] : $whitelist,
+            blockHeaderSource: $this->blocks,
         );
     }
 }
