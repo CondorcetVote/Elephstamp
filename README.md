@@ -140,6 +140,35 @@ $receipts = $client->stampMany(
 );
 ```
 
+The returned list follows the order of the arguments, so you can zip it back
+onto your own paths and persist each proof:
+
+```php
+$paths = ['a.pdf', 'b.pdf', 'c.pdf'];
+
+$receipts = $client->stampMany(
+    ...array_map(FileToStamp::fromPath(...), $paths),
+);
+
+foreach ($receipts as $i => $receipt) {
+    $receipt->saveToPath($paths[$i] . '.ots');
+}
+```
+
+Each receipt is a standalone `.ots`: it has to be upgraded and re-saved
+individually, exactly like a single stamp. But they all descend from the same
+commitment, so they turn complete at the same block:
+
+```php
+foreach ($paths as $path) {
+    $receipt = Receipt::fromPath($path . '.ots');
+
+    if ($client->upgrade($receipt)) {
+        $receipt->saveToPath($path . '.ots');
+    }
+}
+```
+
 ## Reading a receipt
 
 ```php
