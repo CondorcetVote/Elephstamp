@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace CondorcetVote\ElephStamp;
 
-use CondorcetVote\ElephStamp\Attestation\PendingAttestation;
+use CondorcetVote\ElephStamp\Attestation\{BitcoinAttestation, PendingAttestation};
 use CondorcetVote\ElephStamp\Merkle\MerkleTree;
 use CondorcetVote\ElephStamp\Random\{CryptoRandomSource, DeterministicRandomSource, RandomSource};
-use CondorcetVote\ElephStamp\Calendar\{CalendarClient, CalendarWhitelist, FakeCalendarClient, HttpCalendarClient};
+use CondorcetVote\ElephStamp\Calendar\{CalendarClient, CalendarResponse, CalendarWhitelist, FakeCalendarClient, HttpCalendarClient};
 use CondorcetVote\ElephStamp\Exception\{InvalidInputException, SerializationException, StampingException};
 use CondorcetVote\ElephStamp\Operation\{Append, HashOperation, Sha256};
+use CondorcetVote\ElephStamp\Upgrade\{CalendarUpgradeResult, UpgradeOutcome, UpgradeReport};
 
 /**
  * The library entry point: submit timestamp requests to calendar servers and
@@ -205,50 +206,114 @@ final class ElephStamp
      * Query the calendars for confirmations and merge them into the receipt.
      *
      * Performs a single polling pass and returns whether anything changed; call
-     * it again later to keep polling a still-pending receipt.
+     * it again later to keep polling a still-pending receipt. Use
+     * {@see upgradeWithReport()} to learn what each calendar answered.
+     *
+     * @param bool $pollAll also poll the calendars still pending in an already complete receipt, to collect every attestation rather than stopping at the first
      */
-    public function upgrade(Receipt $receipt): bool
+    public function upgrade(Receipt $receipt, bool $pollAll = false): bool
+    {
+        return $this->upgradeWithReport($receipt, $pollAll)->changed();
+    }
+
+    /**
+     * Like {@see upgrade()}, but returns what happened with every calendar.
+     *
+     * The report lists one entry per pending attestation of the receipt, in
+     * proof order: upgraded, still pending, failed, rejected, or skipped
+     * because its calendar is not whitelisted.
+     *
+     * One Bitcoin attestation makes a receipt complete and verifiable, so by
+     * default a complete receipt is not polled and yields an empty report.
+     * With $pollAll the calendars still pending in a complete receipt are
+     * polled too, and the submissions already confirmed are reported as such.
+     */
+    public function upgradeWithReport(Receipt $receipt, bool $pollAll = false): UpgradeReport
     {
         // A complete receipt has nothing left to poll for.
-        if ($receipt->isComplete()) {
-            return false;
+        if ($receipt->isComplete() && !$pollAll) {
+            return new UpgradeReport([]);
         }
+
+        $results = [];
+        $toPoll = [];
 
         // Only contact calendars whose URI is whitelisted: an untrusted `.ots`
         // must not be able to point us at arbitrary hosts.
-        $pending = array_values(array_filter(
-            $receipt->detachedTimestampFile()->timestamp->findPending(),
-            fn(array $entry): bool => $this->upgradeWhitelist->allows($entry['attestation']->uri),
-        ));
-
-        if (empty($pending)) {
-            return false;
+        foreach ($receipt->detachedTimestampFile()->timestamp->findPending() as $index => $entry) {
+            if ($entry['node']->hasBitcoinAttestation()) {
+                $results[$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Confirmed, blockHeight: self::lowestBlockHeight($entry['node']));
+            } elseif ($this->upgradeWhitelist->allows($entry['attestation']->uri)) {
+                $toPoll[$index] = $entry;
+            } else {
+                $results[$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Skipped);
+            }
         }
 
-        $requests = array_map(
-            static fn(array $entry): array => ['url' => $entry['attestation']->uri, 'commitment' => $entry['msg']],
-            $pending,
+        if (!empty($toPoll)) {
+            $requests = array_values(array_map(
+                static fn(array $entry): array => ['url' => $entry['attestation']->uri, 'commitment' => $entry['msg']],
+                $toPoll,
+            ));
+            $indexes = array_keys($toPoll);
+
+            // Responses come back aligned with $requests; a calendar that is
+            // unreachable or still has nothing simply yields no timestamp and
+            // is reported as such, never aborting the pass.
+            foreach ($this->calendarClient->getTimestamps($requests) as $position => $response) {
+                $index = $indexes[$position];
+                $results[$index] = $this->mergeUpgradeResponse($toPoll[$index], $response);
+            }
+        }
+
+        ksort($results);
+
+        return new UpgradeReport(array_values($results));
+    }
+
+    /**
+     * @param array{node: Timestamp, msg: string, attestation: PendingAttestation} $pending
+     */
+    private function mergeUpgradeResponse(array $pending, CalendarResponse $response): CalendarUpgradeResult
+    {
+        $url = $pending['attestation']->uri;
+        $commitment = $pending['msg'];
+
+        if ($response->timestamp === null) {
+            if ($response->error !== null) {
+                return new CalendarUpgradeResult($url, $commitment, UpgradeOutcome::Failed, $response->error->getMessage());
+            }
+
+            return new CalendarUpgradeResult($url, $commitment, UpgradeOutcome::Pending);
+        }
+
+        try {
+            $changed = $pending['node']->merge($response->timestamp);
+        } catch (SerializationException $exception) {
+            // A timestamp that does not commit to the digest we asked for is
+            // hostile or corrupt: skip that calendar, keep the pass.
+            return new CalendarUpgradeResult($url, $commitment, UpgradeOutcome::Rejected, $exception->getMessage());
+        }
+
+        return new CalendarUpgradeResult(
+            $url,
+            $commitment,
+            $changed ? UpgradeOutcome::Upgraded : UpgradeOutcome::Unchanged,
+            blockHeight: self::lowestBlockHeight($pending['node']),
         );
+    }
 
-        $changed = false;
+    private static function lowestBlockHeight(Timestamp $node): ?int
+    {
+        $heights = [];
 
-        // Responses come back aligned with $requests (and thus $pending); a
-        // calendar that is unreachable or still has nothing simply yields no
-        // timestamp and is skipped, never aborting the pass.
-        foreach ($this->calendarClient->getTimestamps($requests) as $index => $response) {
-            if ($response->timestamp === null) {
-                continue;
-            }
-
-            try {
-                $changed = $pending[$index]['node']->merge($response->timestamp) || $changed;
-            } catch (SerializationException) {
-                // A timestamp that does not commit to the digest we asked for
-                // is hostile or corrupt: skip that calendar, keep the pass.
+        foreach ($node->allAttestations() as ['attestation' => $attestation]) {
+            if ($attestation instanceof BitcoinAttestation) {
+                $heights[] = $attestation->blockHeight;
             }
         }
 
-        return $changed;
+        return $heights === [] ? null : min($heights);
     }
 
     private function merkleLeaf(Timestamp $fileTimestamp, bool $useNonce): Timestamp

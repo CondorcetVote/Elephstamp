@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CondorcetVote\ElephStamp;
 
 use CondorcetVote\ElephStamp\Attestation\{BitcoinAttestation, PendingAttestation};
+use CondorcetVote\ElephStamp\Bitcoin\{AnchorLocator, BitcoinAnchor};
 use CondorcetVote\ElephStamp\Exception\{InvalidInputException, SerializationException};
 use CondorcetVote\ElephStamp\Operation\HashOperation;
 use SplFileObject;
@@ -231,6 +232,21 @@ final class Receipt
         }
 
         return $result;
+    }
+
+    /**
+     * Every Bitcoin attestation with what the proof reveals about it: the
+     * block merkle root it commits to and, when recoverable, the transaction
+     * carrying the commitment (hence a transaction id to look up).
+     *
+     * Like every Bitcoin figure this library reports, nothing is verified
+     * against the blockchain.
+     *
+     * @return list<BitcoinAnchor>
+     */
+    public function bitcoinAnchors(): array
+    {
+        return AnchorLocator::locate($this->detached->timestamp);
     }
 
     /**

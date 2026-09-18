@@ -1,0 +1,21 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Installed as a dependency, the autoloader sits three levels up; from a
+// checkout of this repository, it is the local vendor directory.
+foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+
+        break;
+    }
+}
+
+if (!class_exists(CondorcetVote\ElephStamp\Console\Application::class)) {
+    fwrite(STDERR, "Composer autoloader not found: run \"composer install\" first.\n");
+    exit(1);
+}
+
+exit((new CondorcetVote\ElephStamp\Console\Application)->run());

@@ -2,11 +2,20 @@
     "name": "condorcet-vote/elephstamp",
     "description": "Modern, object-oriented PHP library for OpenTimestamps: register timestamp proofs with calendar servers and collect the completed .ots certification.",
     "type": "library",
-    "keywords": ["opentimestamps", "timestamp", "ots", "bitcoin", "proof", "notary", "certification"],
+    "keywords": [
+        "opentimestamps",
+        "timestamp",
+        "ots",
+        "bitcoin",
+        "proof",
+        "notary",
+        "certification"
+    ],
     "require": {
         "php": "^8.5",
         "ext-mbstring": "*",
-        "symfony/http-client": "^8.1"
+        "symfony/http-client": "^8.1",
+        "symfony/console": "^8.1"
     },
     "require-dev": {
         "pestphp/pest": "^5.1",
@@ -20,6 +29,14 @@
             "CondorcetVote\\ElephStamp\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/elephstamp"
+    ],
     "archive": {
         "exclude": [
             "/tests",
