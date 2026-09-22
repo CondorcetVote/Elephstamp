@@ -1,6 +1,6 @@
 > CondorcetVote \ [Receipt](class_Receipt.md)
 # Method detachedTimestampFile()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L252)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L301)
 
 ```php
 public function Receipt->detachedTimestampFile( ): CondorcetVote\ElephStamp\DetachedTimestampFile

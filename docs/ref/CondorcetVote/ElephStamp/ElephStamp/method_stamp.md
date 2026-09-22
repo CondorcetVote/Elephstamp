@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method stamp()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L157)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L194)
 
 ```php
 public function ElephStamp->stamp( CondorcetVote\ElephStamp\FileToStamp $file ): CondorcetVote\ElephStamp\Receipt

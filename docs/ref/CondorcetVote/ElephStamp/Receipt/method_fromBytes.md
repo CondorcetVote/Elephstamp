@@ -1,6 +1,6 @@
 > CondorcetVote \ [Receipt](class_Receipt.md)
 # Method fromBytes()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L35)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L42)
 
 ```php
 public static function Receipt::fromBytes( string $bytes ): self

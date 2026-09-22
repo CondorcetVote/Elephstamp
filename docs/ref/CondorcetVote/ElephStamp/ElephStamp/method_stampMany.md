@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method stampMany()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L179)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L216)
 
 ```php
 public function ElephStamp->stampMany( [ CondorcetVote\ElephStamp\FileToStamp ...$files ] ): array

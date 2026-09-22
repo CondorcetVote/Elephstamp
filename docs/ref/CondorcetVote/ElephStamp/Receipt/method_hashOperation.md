@@ -1,6 +1,6 @@
 > CondorcetVote \ [Receipt](class_Receipt.md)
 # Method hashOperation()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L195)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Receipt.php#L229)
 
 ```php
 public function Receipt->hashOperation( ): CondorcetVote\ElephStamp\Operation\HashOperation

@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method __construct()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L80)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L85)
 
 ```php
-public function ElephStamp->__construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, ?int $requiredCalendars = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null ] )
+public function ElephStamp->__construct( [ ?CondorcetVote\ElephStamp\Calendar\CalendarClient $calendarClient = null, ?array $calendarUrls = null, ?int $requiredCalendars = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null, ?CondorcetVote\ElephStamp\Random\RandomSource $randomSource = null, ?array $upgradeWhitelist = null, ?CondorcetVote\ElephStamp\Verify\BlockHeaderSource $blockHeaderSource = null ] )
 ```
 
 ## Parameters
@@ -57,3 +57,11 @@ a single calendar is configured
 **Type:** `?array`
 
 host patterns an upgrade may contact (defaults to {@see \CondorcetVote\ElephStamp\DEFAULT_UPGRADE_WHITELIST}); pass your own when using private calendars
+
+### **blockHeaderSource:**
+```php
+?CondorcetVote\ElephStamp\Verify\BlockHeaderSource $blockHeaderSource = null
+```
+**Type:** `?CondorcetVote\ElephStamp\Verify\BlockHeaderSource`
+
+where {@see \CondorcetVote\ElephStamp\verify()} gets block headers; defaults to the {@see \CondorcetVote\ElephStamp\Verify\Explorer::DEFAULT} explorer
