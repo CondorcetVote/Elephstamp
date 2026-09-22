@@ -214,3 +214,28 @@ it('stays verified but warns when another attestation does not match its block',
     expect($document['verdict'])->toBe('verified')
         ->and(array_column($document['bitcoin_attestations'], 'outcome'))->toBe(['verified', 'merkle_root_mismatch']);
 });
+
+it('passes node settings to the client and requires --node for its companions', function (): void {
+    $this->factory->blocks->anchor($this->receipt);
+
+    $this->tester->run(['verify', 'receipts' => [$this->path], '--node' => 'http://127.0.0.1:8332', '--node-cookie' => '/var/lib/bitcoind/.cookie']);
+
+    $this->tester->assertCommandIsSuccessful();
+
+    expect($this->factory->lastOptions?->node)->toBe('http://127.0.0.1:8332')
+        ->and($this->factory->lastOptions?->nodeCookieFile)->toBe('/var/lib/bitcoind/.cookie')
+        ->and($this->factory->lastOptions?->nodeUser)->toBeNull()
+        ->and($this->factory->lastOptions?->resolvedExplorers())->toBe([]);
+
+    $this->tester->run(['verify', 'receipts' => [$this->path], '--node' => 'http://127.0.0.1:8332', '--node-user' => 'rpc', '--node-password' => 'secret', '--explorer' => ['blockstream']]);
+
+    expect($this->factory->lastOptions?->nodeUser)->toBe('rpc')
+        ->and($this->factory->lastOptions?->nodePassword)->toBe('secret')
+        ->and($this->factory->lastOptions?->resolvedExplorers())->toBe([Explorer::Blockstream]);
+
+    $this->tester->run(['verify', 'receipts' => [$this->path], '--node-user' => 'rpc']);
+
+    $this->tester->assertCommandFailed();
+
+    expect($this->tester->getDisplay())->toContain('--node-user, --node-password and --node-cookie need --node');
+});

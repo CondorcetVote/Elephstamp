@@ -35,17 +35,15 @@ in what it does with them.
   calendars can provide a blockchain attestation, **checked against the
   blockchain before it is accepted** into the proof.
 - Verifying a completed proof against the Bitcoin blockchain, through a public
-  block explorer: mempool.space by default, blockstream.info or any Esplora
-  instance on request. The block header's proof of work is checked locally.
+  block explorer (mempool.space by default, blockstream.info or any Esplora
+  instance on request) or **your own Bitcoin node** over JSON-RPC, a pruned
+  one included. The block header's proof of work is checked locally.
 - An `elephstamp` **command-line tool** exposing all of the above, with
   readable reports on what every calendar is up to.
 - A built-in **fake mode** for tests and local/integration environments.
 
 **Out of scope (for now)**
 
-- Verifying against a Bitcoin node you run. The block-header abstraction is
-  ready for it, but only explorers are implemented; an explorer is a third
-  party you trust for block headers.
 - Non-Bitcoin attestations (Litecoin, Ethereum): preserved, never interpreted.
 
 ## Requirements
@@ -94,7 +92,7 @@ if ($client->upgrade($receipt)) {
 if ($receipt->isComplete()) {
     echo 'Anchored in Bitcoin block ' . $receipt->bitcoinBlockHeight();
 
-    // Check it against the chain, through a public block explorer.
+    // Check it against the chain, through a public block explorer (or your node, see LIBRARY.md).
     $report = $client->verify($receipt, FileToStamp::fromPath('contract.pdf'));
     echo $report->verdict()->name;   // Verified
 }
@@ -105,7 +103,7 @@ From the shell:
 ```bash
 elephstamp stamp contract.pdf         # → contract.pdf.ots
 elephstamp upgrade contract.pdf.ots   # later: fetch the Bitcoin attestation
-elephstamp verify contract.pdf.ots    # check it against the blockchain via a block explorer
+elephstamp verify contract.pdf.ots    # check it against the blockchain (explorer, or --node for your own)
 elephstamp info contract.pdf.ots      # what each calendar did, block height, digest check
 ```
 
@@ -128,12 +126,13 @@ proofs departs from the Python client on purpose, in a few places:
   and reports the branches that do not match alongside rather than letting
   one bad calendar fail the whole proof. The file digest, of course, has to
   match.
-- **Block headers come from a block explorer, not a Bitcoin node.** `ots
-  verify` needs a Bitcoin Core RPC; ElephStamp asks mempool.space (or
-  blockstream.info, or any Esplora instance, several of them cross-checked)
-  for the raw header and checks its proof of work locally, so the explorer
-  is trusted only for the header's existence. Verifying against your own node
-  is planned, not implemented.
+- **Block headers come from a block explorer, or from your node.** `ots
+  verify` requires a Bitcoin Core RPC; ElephStamp works without one, asking
+  mempool.space (or blockstream.info, or any Esplora instance, several of
+  them cross-checked) for the raw header and checking its proof of work
+  locally, so the explorer is trusted only for the header's existence. A
+  node you run is supported too (`--node`), alone or cross-checked with the
+  explorers.
 - **Every calendar's attestation can be collected.** Like `ots upgrade`,
   an upgrade stops at the first Bitcoin attestation: once a proof is
   complete, the calendars still pending in it are left alone. ElephStamp adds

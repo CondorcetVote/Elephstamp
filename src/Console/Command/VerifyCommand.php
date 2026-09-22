@@ -12,14 +12,15 @@ use Symfony\Component\Console\Attribute\{Argument, AsCommand, Option};
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use SensitiveParameter;
 
 #[AsCommand(
     name: 'verify',
-    description: 'Check a proof against the Bitcoin blockchain, through a public block explorer',
+    description: 'Check a proof against the Bitcoin blockchain, through a block explorer or your own node',
     help: <<<'HELP'
         Recomputes everything a proof contains (file digest, operations, transaction,
-        merkle branch) and asks a block explorer for the header of every block the proof
-        names. The proof is <comment>verified</comment> when the block's merkle root equals the one the
+        merkle branch) and asks a block explorer, or a Bitcoin node you run (<comment>--node</comment>), for
+        the header of every block the proof names. The proof is <comment>verified</comment> when the block's merkle root equals the one the
         proof leads to, and the block is buried under <comment>--min-confirmations</comment> blocks. One such
         attestation is enough: a proof usually holds one per calendar, and an attestation
         that does not match its block is reported but does not undo the others.
@@ -28,9 +29,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         <comment>contract.pdf.ots</comment>), or given with <comment>--file</comment> or as a <comment>--digest</comment>. Without it, only the
         proof itself is checked, not that it is the proof of a particular file.
 
-        The explorer is a third party you trust for block headers. Its raw header is
-        parsed locally and its proof of work checked, and several explorers can be
-        required to agree with repeated <comment>--explorer</comment> options.
+        An explorer is a third party you trust for block headers. Its raw header is
+        parsed locally and its proof of work checked, and several sources can be
+        required to agree with repeated <comment>--explorer</comment> options, or <comment>--node</comment> together with
+        <comment>--explorer</comment>. Your own node needs no such trust: <comment>--node</comment> alone asks nobody else.
 
         Exit codes: <info>0</info> verified; <info>1</info> failed (the file or a merkle root does not match), bad
         usage, or an unreadable proof; <info>2</info> not verifiable yet (pending, awaiting
@@ -43,6 +45,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         'contract.pdf.ots --explorer blockstream',
         'contract.pdf.ots --explorer mempool --explorer blockstream',
         'contract.pdf.ots --explorer-url https://esplora.internal/api',
+        'contract.pdf.ots --node http://127.0.0.1:8332 --node-cookie ~/.bitcoin/.cookie',
+        'contract.pdf.ots --node http://user:password@127.0.0.1:8332 --explorer mempool',
         'proofs/*.ots --min-confirmations 1 --json',
     ],
 )]
@@ -73,9 +77,19 @@ final class VerifyCommand
         array $explorer = [],
         #[Option(description: 'Base URL of another Esplora-compatible explorer, e.g. a self-hosted one (repeatable, https only)', name: 'explorer-url')]
         array $explorerUrl = [],
+        #[Option(description: 'JSON-RPC URL of a Bitcoin node you run, e.g. http://127.0.0.1:8332 (plain http for local and private hosts only). Alone it replaces the explorer; with --explorer, all must agree')]
+        #[SensitiveParameter]
+        ?string $node = null,
+        #[Option(description: 'RPC user for --node (or put user:password@ in the URL)', name: 'node-user')]
+        ?string $nodeUser = null,
+        #[Option(description: 'RPC password for --node', name: 'node-password')]
+        #[SensitiveParameter]
+        ?string $nodePassword = null,
+        #[Option(description: 'Bitcoin Core .cookie file to read the RPC credentials from, instead of --node-user/--node-password', name: 'node-cookie')]
+        ?string $nodeCookie = null,
         #[Option(description: 'Blocks a verifying block must be buried under, itself included', name: 'min-confirmations')]
         int $minConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS,
-        #[Option(description: 'Seconds to wait for an explorer before giving up on it')]
+        #[Option(description: 'Seconds to wait for an explorer or node before giving up on it')]
         ?float $timeout = null,
         #[Option(description: 'Print machine-readable JSON instead of the report')]
         bool $json = false,
@@ -98,8 +112,22 @@ final class VerifyCommand
             return Command::FAILURE;
         }
 
+        if ($node === null && ($nodeUser !== null || $nodePassword !== null || $nodeCookie !== null)) {
+            $io->error('--node-user, --node-password and --node-cookie need --node.');
+
+            return Command::FAILURE;
+        }
+
         try {
-            $client = $this->clientFactory->create(new ClientOptions(timeout: $timeout, explorers: ClientOptions::explorersFromNames($explorer), explorerUrls: $explorerUrl));
+            $client = $this->clientFactory->create(new ClientOptions(
+                timeout: $timeout,
+                explorers: ClientOptions::explorersFromNames($explorer),
+                explorerUrls: $explorerUrl,
+                node: $node,
+                nodeUser: $nodeUser,
+                nodePassword: $nodePassword,
+                nodeCookieFile: $nodeCookie,
+            ));
         } catch (ElephStampException $exception) {
             $io->error($exception->getMessage());
 
@@ -186,7 +214,7 @@ final class VerifyCommand
         $io->definitionList(
             ['Original' => self::originalLine($original, $report->fileMatches)],
             ['Proof' => \sprintf('%s digest %s, %s recomputed offline', $receipt->hashOperation()->describe(), $receipt->fileDigestHex(), Formatter::plural(\count($report->anchors), 'Bitcoin attestation'))],
-            ['Block headers' => \sprintf('%s — a third party, trusted for block headers only', $report->source)],
+            ['Block headers' => \sprintf('%s — trusted for block headers only', $report->source)],
             ['Required depth' => Formatter::plural($report->requiredConfirmations, 'confirmation')],
         );
 

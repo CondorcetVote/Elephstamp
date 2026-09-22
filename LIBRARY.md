@@ -348,9 +348,9 @@ sha256
 A complete proof is a chain of computations from the file digest to the
 merkle root of a Bitcoin block. Everything in it is recomputed locally; the
 only external fact needed is the header of that block. `verify()` fetches it
-from a block explorer and compares merkle roots. **By default the explorer is
-mempool.space**; see [below](#choosing-where-block-headers-come-from) to pick
-another one.
+from a block explorer, or from a Bitcoin node you run, and compares merkle
+roots. **By default the explorer is mempool.space**; see
+[below](#choosing-where-block-headers-come-from) to pick another source.
 
 ```php
 use CondorcetVote\ElephStamp\ElephStamp;
@@ -414,7 +414,7 @@ fetching the chain tip once; it is what `upgrade()` uses on calendar answers.
 Without configuration, block headers come from **mempool.space**
 (`Explorer::DEFAULT`). Any `BlockHeaderSource` can replace it; the interface
 is neutral, so the same verifier can be backed by another public explorer, a
-self-hosted one, several at once, or a fake:
+self-hosted one, your own Bitcoin node, several at once, or a fake:
 
 ```php
 use CondorcetVote\ElephStamp\Verify\CrossCheckingBlockHeaderSource;
@@ -442,11 +442,62 @@ An explorer is a third party you trust for block headers. Two things limit
 that trust: the Esplora driver fetches the raw 80-byte header, recomputes its
 hash and checks its proof of work locally, so an explorer cannot serve a
 bogus merkle root without forging a valid header; and cross-checking makes
-several explorers vouch for the same header. Verifying against a Bitcoin node
-you run is planned as another `BlockHeaderSource` implementation.
+several explorers vouch for the same header. Or trust nobody else and ask
+your own node, below.
 
 Explorer traffic is hardened like calendar traffic: https only, redirects
 never followed, tiny response cap, timeouts on idle and total duration.
+
+### Verifying against your own Bitcoin node
+
+`BitcoinRpcBlockHeaderSource` talks to any node speaking the Bitcoin Core
+JSON-RPC protocol (`getblockhash`, `getblockheader`, `getblockcount`). Only
+block headers are asked for, so a **pruned node is enough**, and no wallet
+or transaction index is needed. Hosted RPC providers speaking the same
+protocol work too.
+
+```php
+use CondorcetVote\ElephStamp\Verify\BitcoinRpcBlockHeaderSource;
+
+// Credentials in the URL…
+$node = new BitcoinRpcBlockHeaderSource('http://user:password@127.0.0.1:8332');
+
+// …or as arguments…
+$node = new BitcoinRpcBlockHeaderSource('http://127.0.0.1:8332', user: 'user', password: 'password');
+
+// …or from the .cookie file Bitcoin Core writes when rpcpassword is not set.
+$node = new BitcoinRpcBlockHeaderSource('http://127.0.0.1:8332', cookieFile: '/home/bitcoin/.bitcoin/.cookie');
+
+// A hosted provider (no third-party trust bounded here: it is a node you did not run).
+$node = new BitcoinRpcBlockHeaderSource('https://rpc.example.com/v1/your-token');
+
+$client = new ElephStamp(blockHeaderSource: $node);
+
+// Your node and a public explorer must agree.
+$client = new ElephStamp(blockHeaderSource: new CrossCheckingBlockHeaderSource($node, Explorer::MempoolSpace->source()));
+```
+
+Optional arguments mirror the explorer driver: an injectable
+`HttpClientInterface`, `userAgent`, `timeout` (idle) and `maxDuration`
+(total) in seconds, and a `label` for `describe()` (the host and port by
+default).
+
+Give the credentials one way only; the constructor throws
+`InvalidInputException` when they come from several places, when a user has
+no password (or the reverse), or when the cookie file cannot be read. They
+never appear in `describe()` or in exception messages.
+
+Plain `http` is accepted only for **local and private hosts**: `localhost`,
+a hostname without a dot (a Docker service name, say), loopback, RFC 1918
+and link-local addresses. Any other host must be reached over `https`, or
+the constructor throws `InvalidInputException`. Redirects are never followed
+and answers are size-capped, as for explorers. The node's raw header goes
+through the same local proof-of-work check as an explorer's.
+
+A refused login (HTTP 401/403), an RPC error (a height past the tip is
+reported as an unknown block, like an explorer's 404) or a node still
+loading its block index all surface as `BlockSourceException`, which
+`verify()` turns into an unavailable attestation.
 
 ### Verifying in fake mode
 

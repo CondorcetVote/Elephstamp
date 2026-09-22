@@ -7,6 +7,7 @@ namespace CondorcetVote\ElephStamp\Console;
 use CondorcetVote\ElephStamp\ElephStamp;
 use CondorcetVote\ElephStamp\Exception\InvalidInputException;
 use CondorcetVote\ElephStamp\Verify\Explorer;
+use SensitiveParameter;
 
 /**
  * Calendar-related settings collected from the command line.
@@ -24,6 +25,10 @@ final class ClientOptions
      * @param float|null     $timeout           seconds to wait for a calendar or explorer before giving up; null for the library default
      * @param list<Explorer> $explorers         block explorers to verify against; all of them must agree when several are given
      * @param list<string>   $explorerUrls      base URLs of additional Esplora-compatible explorers, e.g. a self-hosted one
+     * @param string|null    $node              JSON-RPC URL of a Bitcoin node to verify against, alone or alongside the explorers
+     * @param string|null    $nodeUser          RPC user for $node, with $nodePassword
+     * @param string|null    $nodePassword      RPC password for $node, with $nodeUser
+     * @param string|null    $nodeCookieFile    Bitcoin Core `.cookie` file holding the RPC credentials, instead of a user and password
      */
     public function __construct(
         public readonly array $calendarUrls = [],
@@ -33,6 +38,12 @@ final class ClientOptions
         public readonly ?float $timeout = null,
         public readonly array $explorers = [],
         public readonly array $explorerUrls = [],
+        #[SensitiveParameter]
+        public readonly ?string $node = null,
+        public readonly ?string $nodeUser = null,
+        #[SensitiveParameter]
+        public readonly ?string $nodePassword = null,
+        public readonly ?string $nodeCookieFile = null,
     ) {}
 
     /**
@@ -64,13 +75,13 @@ final class ClientOptions
 
     /**
      * The explorers verification consults: the chosen ones, or the default
-     * when none was chosen and no custom URL was given.
+     * when none was chosen and neither a custom URL nor a node was given.
      *
      * @return list<Explorer>
      */
     public function resolvedExplorers(): array
     {
-        if ($this->explorers === [] && $this->explorerUrls === []) {
+        if ($this->explorers === [] && $this->explorerUrls === [] && $this->node === null) {
             return [Explorer::DEFAULT];
         }
 

@@ -299,3 +299,14 @@ it('passes explorer choices to the client and validates --min-confirmations', fu
     $this->tester->assertCommandFailed();
     expect($this->tester->getDisplay())->toContain('--min-confirmations must be at least 1');
 });
+
+it('passes node settings to the client and requires --node for its companions', function (): void {
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--node' => 'http://user:pass@127.0.0.1:8332']);
+
+    expect($this->factory->lastOptions?->node)->toBe('http://user:pass@127.0.0.1:8332')
+        ->and($this->factory->lastOptions?->resolvedExplorers())->toBe([]);
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--node-cookie' => '/tmp/.cookie']);
+    $this->tester->assertCommandFailed();
+    expect($this->tester->getDisplay())->toContain('--node-user, --node-password and --node-cookie need --node');
+});

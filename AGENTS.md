@@ -86,18 +86,20 @@ scratch script and verify before committing.
   available through the library's public API (add it there first).
 
 - Verifying a complete proof against the Bitcoin blockchain through a
-  `Verify\BlockHeaderSource`. The interface is neutral (explorer, node, fake);
-  only the Esplora driver (`EsploraBlockHeaderSource`, behind the `Explorer`
-  enum for mempool.space and blockstream.info) is implemented. Never hard-code
-  an explorer's API in the verifier: add a driver.
+  `Verify\BlockHeaderSource`. The interface is neutral (explorer, node, fake).
+  Two drivers exist: Esplora (`EsploraBlockHeaderSource`, behind the
+  `Explorer` enum for mempool.space and blockstream.info) and Bitcoin Core
+  JSON-RPC (`BitcoinRpcBlockHeaderSource`, for a node you run or a hosted RPC
+  provider; CLI `--node`). Never hard-code an explorer's or node's API in the
+  verifier: add a driver. The RPC driver accepts plain `http` only for local
+  and private hosts and never lets credentials into messages; keep both.
 
 **Out of scope (for now)**
 
-- Verifying against a Bitcoin node: planned as another `BlockHeaderSource`,
-  not implemented. Do not expose or mention a `--node` option in the CLI
-  until it exists. Non-Bitcoin attestations (Litecoin,
-  Ethereum/Keccak-256) are recognised only enough to be preserved or clearly
-  rejected, not verified.
+- Non-Bitcoin attestations (Litecoin, Ethereum/Keccak-256) are recognised
+  only enough to be preserved or clearly rejected, not verified.
+- Reading `bitcoin.conf` for RPC credentials: the CLI takes them explicitly
+  (`--node-user`/`--node-password`, `--node-cookie`, or in the URL).
 
 ## Architecture notes
 

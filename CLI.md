@@ -43,7 +43,7 @@ Inside a project that already depends on the library, the command is at
 elephstamp stamp contract.pdf            # → contract.pdf.ots, pending
 # ... a few hours later ...
 elephstamp upgrade contract.pdf.ots      # collects the Bitcoin attestation
-elephstamp verify contract.pdf.ots       # checks it against the blockchain via a block explorer
+elephstamp verify contract.pdf.ots       # checks it against the blockchain via a block explorer (or --node)
 elephstamp info contract.pdf.ots         # what the proof says, calendar by calendar
 elephstamp tree contract.pdf.ots         # every operation and hash, for checking by hand
 ```
@@ -126,6 +126,7 @@ elephstamp upgrade proofs/*.ots
 elephstamp upgrade contract.pdf.ots --dry-run
 elephstamp upgrade contract.pdf.ots --all
 elephstamp upgrade contract.pdf.ots --explorer blockstream --min-confirmations 3
+elephstamp upgrade contract.pdf.ots --node http://127.0.0.1:8332 --node-cookie ~/.bitcoin/.cookie
 elephstamp upgrade contract.pdf.ots --no-verify
 elephstamp upgrade contract.pdf.ots -l 'https://*.internal.example' --timeout 5
 ```
@@ -151,8 +152,8 @@ block that does not commit to the proof, or one mined a minute ago that a
 reorganisation may still drop. Merged blindly, either would leave you with a
 "complete" proof that `verify` fails. So before anything is merged, each
 Bitcoin attestation in an answer is checked exactly as `verify` would: the
-block explorer (mempool.space by default, see `--explorer`) is asked for the
-block's header, the merkle roots must match, and the block must be buried
+block explorer (mempool.space by default, see `--explorer`) or your own node
+(`--node`) is asked for the block's header, the merkle roots must match, and the block must be buried
 under `--min-confirmations` blocks (6). An answer that fails the check is not
 merged, and the calendar stays pending to be asked again next time:
 
@@ -182,7 +183,7 @@ client does; the answer then reads `upgraded — Bitcoin block 912345 (not check
 | `failed` | Network or protocol error; the calendar's message follows. |
 | `rejected` | The calendar returned a proof for a *different* digest, or naming a block whose merkle root differs from the one the proof leads to. Hostile or corrupt, discarded. |
 | `unconfirmed` | The answer matches its block, but the block is still shallower than `--min-confirmations`. Not merged yet; try later. |
-| `unverifiable` | The answer could not be checked: the explorer was unreachable or knows no such block, or the attestation sits below an operation this tool cannot compute. Not merged. |
+| `unverifiable` | The answer could not be checked: the explorer or node was unreachable or knows no such block, or the attestation sits below an operation this tool cannot compute. Not merged. |
 | `skipped` | The calendar's host is not on the whitelist, so it was never contacted. |
 | `confirmed` | A Bitcoin attestation already hangs below this submission, nothing to ask. Only with `--all`. |
 
@@ -223,7 +224,9 @@ what to do about it.
 | `--min-confirmations=N` | Depth a block named by a calendar needs before its attestation is merged, itself included. Default `6`. |
 | `-e, --explorer=NAME` | Which explorer checks the answers: `mempool` (mempool.space, the default) or `blockstream` (blockstream.info). Repeatable: all named explorers must agree. |
 | `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
-| `--timeout=SECONDS` | Give up on a calendar or an explorer after this long. |
+| `--node=URL` | Check the answers against your own Bitcoin node instead (JSON-RPC, see [`verify`](#verify--check-against-the-blockchain)). With `--explorer`, all sources must agree. |
+| `--node-user=USER`, `--node-password=PASSWORD`, `--node-cookie=PATH` | RPC credentials for `--node`. |
+| `--timeout=SECONDS` | Give up on a calendar, an explorer or the node after this long. |
 | `--json` | Machine-readable output, see [JSON output](#json-output). |
 
 With several proofs a summary closes the report:
@@ -246,14 +249,17 @@ elephstamp verify contract.pdf.ots --digest 065470e2…       # without the file
 elephstamp verify contract.pdf.ots --explorer blockstream   # instead of the default, mempool.space
 elephstamp verify contract.pdf.ots -e mempool -e blockstream            # both must agree
 elephstamp verify contract.pdf.ots --explorer-url https://esplora.internal/api
+elephstamp verify contract.pdf.ots --node http://127.0.0.1:8332 --node-cookie ~/.bitcoin/.cookie
+elephstamp verify contract.pdf.ots --node http://user:password@127.0.0.1:8332 -e mempool   # node and explorer must agree
 elephstamp verify proofs/*.ots --min-confirmations 1 --json
 ```
 
 Recomputes everything the proof contains, offline: the file digest, every
 operation, the transaction, the merkle branch, down to the merkle root of each
-block the proof names. Then asks a block explorer for the header of those
-blocks. **By default the explorer is mempool.space.** Pick blockstream.info
-with `--explorer blockstream`, or any Esplora instance with `--explorer-url`.
+block the proof names. Then asks a block explorer, or a Bitcoin node you run,
+for the header of those blocks. **By default the explorer is mempool.space.**
+Pick blockstream.info with `--explorer blockstream`, any Esplora instance with
+`--explorer-url`, or your own node with `--node`.
 A proof is **verified** when a block's merkle root equals the one the proof
 leads to, and the block is buried under enough confirmations. The verdict
 opens the report as a full-width banner:
@@ -265,7 +271,7 @@ opens the report as a full-width banner:
 
   Original         contract.pdf — digest matches the proof
   Proof            sha256 digest 065470e2…, 3 Bitcoin attestations recomputed offline
-  Block headers    mempool.space and blockstream.info (cross-checked) — a third party, trusted for block headers only
+  Block headers    mempool.space and blockstream.info (cross-checked) — trusted for block headers only
   Required depth   6 confirmations
 
   Block    Merkle root (proof)   Merkle root (block)   Mined at (UTC)        Confirmations   Result
@@ -281,7 +287,7 @@ opens the report as a full-width banner:
 | `VERIFIED` | The file matches the proof (when checked) and at least one block confirms it. The date is the time of the earliest such block. Attestations that do *not* match their block are listed as `MISMATCH` and called out in a warning, but do not undo the verified one. | `0` |
 | `AWAITING CONFIRMATIONS` | The merkle root matches but every matching block is still shallower than `--min-confirmations`. | `2` |
 | `PENDING` | No Bitcoin attestation yet; run `upgrade` first. | `2` |
-| `INCONCLUSIVE` | Attestations exist but no header could be checked (explorer unreachable, unknown block). | `2` |
+| `INCONCLUSIVE` | Attestations exist but no header could be checked (explorer or node unreachable, unknown block). | `2` |
 | `VERIFICATION FAILED` | The file is not the one the proof commits to, or no block commits to the proof (every attestation names a block whose merkle root differs from the proof's, or the rest are not verifiable yet): corrupt, forged, or wrong block. | `1` |
 
 Per block, the *Result* column reads `verified`, `matches, awaiting
@@ -295,8 +301,23 @@ checked against the difficulty the header itself declares, so an explorer
 cannot slip in a bogus merkle root without forging a valid proof of work.
 And several explorers can be required to agree: repeat `--explorer` (or add
 `--explorer-url`) and the verification only passes if they all return the
-same header. Verifying against your own Bitcoin node is planned for a later
-release.
+same header.
+
+**Your own node.** `--node` asks a Bitcoin node over its JSON-RPC interface
+(`getblockhash`, `getblockheader`, `getblockcount`) instead of an explorer, so
+nobody else is trusted. Only headers are fetched: a **pruned node is enough**,
+without wallet or transaction index. Bitcoin Core listens on `8332` (mainnet)
+and takes HTTP Basic credentials: put them in the URL
+(`http://user:password@127.0.0.1:8332`), pass `--node-user` and
+`--node-password`, or point `--node-cookie` at the `.cookie` file Bitcoin Core
+writes in its data directory when no `rpcpassword` is configured (the cookie
+keeps the password out of your shell history and process list). A hosted RPC
+provider speaking the same protocol works the same way, over `https`. Plain
+`http` is accepted for local and private hosts only (`localhost`, a name
+without a dot, loopback, RFC 1918 and link-local addresses). Combine `--node`
+with `--explorer` and every source must agree. Wrong credentials, a node still
+loading, or a block it does not have (a mainnet proof against a regtest node,
+say) make the attestation `unavailable` with the reason, exit `2`.
 
 | Option | Effect |
 | --- | --- |
@@ -304,8 +325,12 @@ release.
 | `--digest=HEX` | Its SHA-256 digest, when you do not have the file. Single proof only. |
 | `-e, --explorer=NAME` | Which explorer to ask: `mempool` (mempool.space, the default) or `blockstream` (blockstream.info). Repeatable: all named explorers must agree. |
 | `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
+| `--node=URL` | JSON-RPC URL of your own Bitcoin node, e.g. `http://127.0.0.1:8332`. Alone it replaces the explorer; with `--explorer`, all must agree. Plain `http` for local and private hosts only. |
+| `--node-user=USER` | RPC user for `--node`, with `--node-password` (or put `user:password@` in the URL). |
+| `--node-password=PASSWORD` | RPC password for `--node`. |
+| `--node-cookie=PATH` | Bitcoin Core `.cookie` file to read the credentials from, instead of a user and password. |
 | `--min-confirmations=N` | Depth a block needs before its attestation counts, itself included. Default `6`. |
-| `--timeout=SECONDS` | Give up on an explorer after this long. |
+| `--timeout=SECONDS` | Give up on an explorer or the node after this long. |
 | `--json` | Machine-readable output, see [JSON output](#json-output). |
 
 Without an original file or digest, the banner says so: the proof itself is
@@ -557,8 +582,8 @@ lowest block now attested below that submission, when there is one;
 `verified` says whether that answer passed the blockchain check (`null` when
 there was nothing to check, or with `--no-verify`), `confirmations` the depth
 of the block it named, and `block_header_source` which explorer was asked
-(`null` when none was). `saved_to` is `null` when nothing was written (no
-change, or `--dry-run`).
+(`null` when none was); with `--node` it names the node's host. `saved_to` is
+`null` when nothing was written (no change, or `--dry-run`).
 
 `verify --json`:
 
@@ -666,11 +691,12 @@ eval "$(elephstamp completion bash)"
 
 ## What the tool does not do
 
-- **No verification against your own node yet.** `verify` relies on public
-  block explorers for block headers; asking a node you run is planned for a
-  later release. `info` never checks anything on-chain; `upgrade` only checks
-  the answers it is about to merge, never the attestations a proof already
-  holds (that is `verify`'s job).
+- **No on-chain check outside `verify` and `upgrade`.** `info` never checks
+  anything on-chain; `upgrade` only checks the answers it is about to merge,
+  never the attestations a proof already holds (that is `verify`'s job).
+- **No `bitcoin.conf` lookup.** `--node` takes its credentials explicitly
+  (URL, `--node-user`/`--node-password` or `--node-cookie`); the tool never
+  reads Bitcoin Core's configuration file.
 - **No non-Bitcoin notaries.** Litecoin or Ethereum attestations are preserved
   and listed as unsupported, never interpreted or upgraded.
 - **No pruning or editing of proofs**: the tool only ever adds attestations.

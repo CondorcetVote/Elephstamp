@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Verification against your own Bitcoin node.**
+  `Verify\BitcoinRpcBlockHeaderSource` fetches block headers from any node
+  speaking the Bitcoin Core JSON-RPC protocol (`getblockhash`,
+  `getblockheader`, `getblockcount`), including a pruned node or a hosted RPC
+  provider. Credentials go in the URL, as a user and password, or as the path
+  to Bitcoin Core's `.cookie` file. Plain `http` is accepted for local and
+  private hosts only; anything else must be `https`. The raw header's proof
+  of work is checked locally, as with explorers, and a node can be
+  cross-checked with explorers through `CrossCheckingBlockHeaderSource`.
+- CLI: `verify` and `upgrade` gain `--node`, `--node-user`, `--node-password`
+  and `--node-cookie`. `--node` alone replaces the explorer; together with
+  `--explorer`, every source must agree.
+
+### Changed
+
+- CLI: the *Block headers* line of the `verify` report reads "trusted for
+  block headers only" and no longer calls the source a third party, since it
+  may now be your own node.
+
 ## [1.2.0] — 2026-09-22
 
 ### Added
@@ -91,6 +114,7 @@ First release.
   captured in its `CalendarResponse` and can never abort a batch.
 - GitHub Actions CI and Dependabot configuration.
 
+[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/CondorcetVote/Elephstamp/releases/tag/v1.0.0

@@ -13,6 +13,7 @@ use Symfony\Component\Console\Attribute\{Argument, AsCommand, Option};
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use SensitiveParameter;
 
 #[AsCommand(
     name: 'upgrade',
@@ -22,13 +23,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         each one answered: <comment>upgraded</comment>, <comment>still pending</comment>, <comment>failed</comment>, <comment>rejected</comment>
         (the calendar returned a proof for another digest, or for a block that does not
         commit to it), <comment>unconfirmed</comment> (its block is still too shallow), <comment>unverifiable</comment>
-        (the explorer could not answer) or <comment>skipped</comment> (its host is not on the whitelist,
+        (the explorer or node could not answer) or <comment>skipped</comment> (its host is not on the whitelist,
         so it was never contacted).
 
         A calendar's answer is untrusted, so every Bitcoin attestation it returns is
         checked against the blockchain before it is merged, exactly as <comment>verify</comment> does:
-        the block explorer (mempool.space by default, see <comment>--explorer</comment>) is asked for the
-        block's header, the merkle roots must match, and the block must be buried under
+        the block explorer (mempool.space by default, see <comment>--explorer</comment>) or your own
+        node (<comment>--node</comment>) is asked for the block's header, the merkle roots must match, and the block must be buried under
         <comment>--min-confirmations</comment> blocks. An answer that fails the check is not merged and the
         calendar stays pending. Pass <comment>--no-verify</comment> to merge whatever the calendars return.
 
@@ -52,6 +53,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         'contract.pdf.ots --dry-run',
         'contract.pdf.ots --all',
         'contract.pdf.ots --explorer blockstream --min-confirmations 3',
+        'contract.pdf.ots --node http://127.0.0.1:8332 --node-cookie ~/.bitcoin/.cookie',
         'contract.pdf.ots --no-verify',
         'contract.pdf.ots -l https://*.internal.example --timeout 5',
     ],
@@ -88,13 +90,23 @@ final class UpgradeCommand
         bool $noDefaultWhitelist = false,
         #[Option(description: 'Merge whatever the calendars answer without checking it against the blockchain first', name: 'no-verify')]
         bool $noVerify = false,
+        #[Option(description: 'JSON-RPC URL of a Bitcoin node you run, e.g. http://127.0.0.1:8332 (plain http for local and private hosts only). Alone it replaces the explorer; with --explorer, all must agree')]
+        #[SensitiveParameter]
+        ?string $node = null,
+        #[Option(description: 'RPC user for --node (or put user:password@ in the URL)', name: 'node-user')]
+        ?string $nodeUser = null,
+        #[Option(description: 'RPC password for --node', name: 'node-password')]
+        #[SensitiveParameter]
+        ?string $nodePassword = null,
+        #[Option(description: 'Bitcoin Core .cookie file to read the RPC credentials from, instead of --node-user/--node-password', name: 'node-cookie')]
+        ?string $nodeCookie = null,
         #[Option(description: 'Blocks a block named by a calendar must be buried under before its attestation is merged, itself included', name: 'min-confirmations')]
         int $minConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS,
         #[Option(description: 'Block explorer to check the answers against: mempool (default) or blockstream. Repeat to require several to agree', shortcut: 'e', suggestedValues: ['mempool', 'blockstream'])]
         array $explorer = [],
         #[Option(description: 'Base URL of another Esplora-compatible explorer, e.g. a self-hosted one (repeatable, https only)', name: 'explorer-url')]
         array $explorerUrl = [],
-        #[Option(description: 'Seconds to wait for a calendar or explorer before giving up on it')]
+        #[Option(description: 'Seconds to wait for a calendar, explorer or node before giving up on it')]
         ?float $timeout = null,
         #[Option(description: 'Print machine-readable JSON instead of the report')]
         bool $json = false,
@@ -111,6 +123,12 @@ final class UpgradeCommand
             return Command::FAILURE;
         }
 
+        if ($node === null && ($nodeUser !== null || $nodePassword !== null || $nodeCookie !== null)) {
+            $io->error('--node-user, --node-password and --node-cookie need --node.');
+
+            return Command::FAILURE;
+        }
+
         try {
             $client = $this->clientFactory->create(new ClientOptions(
                 whitelist: $whitelist,
@@ -118,6 +136,10 @@ final class UpgradeCommand
                 timeout: $timeout,
                 explorers: ClientOptions::explorersFromNames($explorer),
                 explorerUrls: $explorerUrl,
+                node: $node,
+                nodeUser: $nodeUser,
+                nodePassword: $nodePassword,
+                nodeCookieFile: $nodeCookie,
             ));
         } catch (ElephStampException $exception) {
             $io->error($exception->getMessage());
