@@ -91,6 +91,6 @@ First release.
   captured in its `CalendarResponse` and can never abort a batch.
 - GitHub Actions CI and Dependabot configuration.
 
-[1.2.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.1.0...main
+[1.2.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/CondorcetVote/Elephstamp/releases/tag/v1.0.0
