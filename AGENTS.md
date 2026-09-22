@@ -130,6 +130,11 @@ scratch script and verify before committing.
   proof of work; keep that check, it is what limits the trust put in an
   explorer. Explorer answers are untrusted input: https only, no redirects,
   size caps, strict parsing.
+- `--json` is a machine contract: the document must be identical at every
+  verbosity, and every hash in it complete. `Console\Formatter::hex()` /
+  `abbreviate()` belong to the human rendering only — never call them from a
+  command's `toArray()`, use the full `…Hex()` accessors. Guarded by
+  `tests/Feature/Console/JsonHashesTest.php`.
 - The CLI lives under `Console/`. Commands are Symfony invokable commands
   (`#[AsCommand]` + `#[Argument]`/`#[Option]` attributes). They obtain their
   `ElephStamp` through the `Console\ClientFactory` seam so tests can run them

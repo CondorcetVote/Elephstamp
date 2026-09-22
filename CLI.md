@@ -57,7 +57,8 @@ elephstamp tree contract.pdf.ots         # every operation and hash, for checkin
 - File digests and merkle roots are always printed in full. Only the calendar
   **commitments** in tables are abbreviated to `first8…last8`, because they are
   long and there is one per calendar; pass `-v` for full values, or use `tree`,
-  which never abbreviates.
+  which never abbreviates. Abbreviation is a human-reading convenience: `--json`
+  never abbreviates anything, whatever the verbosity.
 - Output is coloured on a terminal; `--no-ansi` disables it, `--json` (where
   available) replaces it with a machine-readable document.
 - Exit codes are part of the contract and listed for each command below.
@@ -469,13 +470,19 @@ block explorers `verify` can consult.
 proofs yield a list, in argument order. A proof that could not be read yields
 `{"receipt": "...", "error": "..."}` in its slot, and the exit code is `1`.
 
+The document is the same at every verbosity: `-v`, `-vv` and `-vvv` change the
+human output only, never the JSON. Every hash it carries — file digests,
+commitments, merkle roots, block hashes, transaction ids — is complete and
+lower-case hex, never abbreviated. (`-q` silences the output altogether, JSON
+included.)
+
 `info --json`:
 
 ```json
 {
     "receipt": "merkle1.txt.ots",
-    "status": "pending",
-    "bitcoin_block_height": null,
+    "status": "complete",
+    "bitcoin_block_height": 358391,
     "file": {
         "hash": "sha256",
         "digest": "d32fee9a827f5a0d580f80beb7edce662dd99fcd6591e4ef8a6244403df0b7c9",
@@ -486,7 +493,7 @@ proofs yield a list, in argument order. A proof that could not be read yields
     "calendars": [
         {
             "url": "https://alice.btc.calendar.opentimestamps.org",
-            "commitment": "57d982df8b35bc0a…b1f26e2e55590477",
+            "commitment": "57d982df8b35bc0a91a93d6d17e0162868dc123bc8b1bbfab22af9268f7fea70376b5cb0b1f26e2e55590477",
             "recorded_at": "2016-09-14T17:03:27+00:00",
             "confirmed": false,
             "block_heights": [],
@@ -496,12 +503,15 @@ proofs yield a list, in argument order. A proof that could not be read yields
     "bitcoin_attestations": [
         {
             "block_height": 358391,
-            "transaction_id": "7e9f0f7d…627cb2ec",
-            "merkle_root": "8a1b66ec…45e47e00"
+            "transaction_id": "7e9f0f7d9daa2d9e51b2e22f4abe814c3f90539afa778a9bef88dc64627cb2ec",
+            "merkle_root": "8a1b66ecb7cbd07d8139a7e7d7f2c41aab1f5009b8364aaf61d03ad245e47e00"
         }
     ],
     "unknown_attestations": [
-        { "tag": "0102030405060708", "payload_bytes": 46 }
+        {
+            "tag": "0102030405060708",
+            "payload_bytes": 46
+        }
     ]
 }
 ```
@@ -509,7 +519,9 @@ proofs yield a list, in argument order. A proof that could not be read yields
 `file.path` and `file.digest_matches` are `null` when no original file was
 checked; `digest_matches` is also `null` when the file could not be read.
 `recorded_at`, `commitment` and `transaction_id` are `null` when they cannot
-be determined.
+be determined. The proof above is a composite, built to show every
+field at once: a real one rarely carries a pending calendar, a Bitcoin
+attestation and an unknown notary all together.
 
 `upgrade --json`:
 
@@ -525,7 +537,7 @@ be determined.
     "calendars": [
         {
             "url": "https://alice.btc.calendar.opentimestamps.org",
-            "commitment": "6aada194…779bcb5c",
+            "commitment": "6aada194cfda36f651b396b5d4c12869ad690656256f8144b08a74d5bb5d3e9c3cfe614046640c9d779bcb5c",
             "outcome": "upgraded",
             "block_height": 912345,
             "claimed_block_height": 912345,
@@ -558,7 +570,7 @@ change, or `--dry-run`).
     "attesting_block_height": 967571,
     "file": {
         "hash": "sha256",
-        "digest": "065470e2…5d7f73e0",
+        "digest": "065470e2d7951e6b7b80e2b5175f891b9beeb0d6cd7871162a6b61485d7f73e0",
         "subject": "contract.pdf",
         "digest_matches": true
     },
@@ -568,12 +580,12 @@ change, or `--dry-run`).
         {
             "block_height": 967571,
             "outcome": "verified",
-            "proof_merkle_root": "098f1d27…7ad0bfab",
-            "block_merkle_root": "098f1d27…7ad0bfab",
-            "block_hash": "00000000…cefa8364",
+            "proof_merkle_root": "098f1d278e9fbe9493f1b4fc0ddb3af3d9bb203cf254be2a4f48a3037ad0bfab",
+            "block_merkle_root": "098f1d278e9fbe9493f1b4fc0ddb3af3d9bb203cf254be2a4f48a3037ad0bfab",
+            "block_hash": "00000000000000000000e32d9a295b892cdf1dcbdeb52461fb0f5e32cefa8364",
             "block_time": "2026-09-18T15:27:58+00:00",
             "confirmations": 50,
-            "transaction_id": "0088fa0a…69d243f7",
+            "transaction_id": "0088fa0ae5bb33378fde6c722088f676d6525f75d48cd2c5125d675c69d243f7",
             "error": null
         }
     ]
