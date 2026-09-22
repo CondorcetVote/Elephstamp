@@ -87,7 +87,7 @@ $receipt->saveToPath('contract.pdf.ots');
 $receipt = Receipt::fromPath('contract.pdf.ots');
 
 if ($client->upgrade($receipt)) {
-    $receipt->saveToPath('contract.pdf.ots');
+    $receipt->save();   // back to contract.pdf.ots
 }
 
 if ($receipt->isComplete()) {

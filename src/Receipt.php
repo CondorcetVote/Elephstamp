@@ -28,6 +28,12 @@ final class Receipt
      */
     public const int MAX_RECEIPT_BYTES = 1_000_000;
 
+    /**
+     * The `.ots` file this receipt lives in: where it was loaded from, or
+     * last saved to. Null for a receipt that never touched the disk.
+     */
+    public protected(set) ?string $path = null;
+
     public function __construct(private readonly DetachedTimestampFile $detached) {}
 
     /**
@@ -65,11 +71,17 @@ final class Receipt
             throw new InvalidInputException(\sprintf('Unable to read receipt file: %s', $path));
         }
 
-        return self::fromBytes($bytes);
+        $receipt = self::fromBytes($bytes);
+        $receipt->path = $path;
+
+        return $receipt;
     }
 
     /**
      * Load a receipt from an already-open, readable `.ots` file handle.
+     *
+     * The receipt remembers the file's path when the handle is a regular
+     * file, so {@see save()} works on it.
      *
      * @throws InvalidInputException if the handle is not readable
      */
@@ -96,7 +108,11 @@ final class Receipt
             }
         }
 
-        return self::fromBytes($bytes);
+        $receipt = self::fromBytes($bytes);
+        $realPath = $file->getRealPath();
+        $receipt->path = $realPath === false ? null : $realPath;
+
+        return $receipt;
     }
 
     /**
@@ -108,7 +124,22 @@ final class Receipt
     }
 
     /**
-     * Write the receipt to an `.ots` file on disk.
+     * Write the receipt back to the file it was loaded from or last saved to.
+     *
+     * @throws InvalidInputException if the receipt has no {@see $path} yet, or the file cannot be written
+     */
+    public function save(): void
+    {
+        if ($this->path === null) {
+            throw new InvalidInputException('This receipt is not bound to a file yet; use saveToPath() first');
+        }
+
+        $this->saveToPath($this->path);
+    }
+
+    /**
+     * Write the receipt to an `.ots` file on disk, and remember that path
+     * for later {@see save()} calls.
      *
      * The bytes go through a temporary file renamed into place, so a crash
      * mid-write can never truncate an existing receipt — often the only copy
@@ -137,6 +168,8 @@ final class Receipt
             if (@file_put_contents($temporary, $bytes) !== \strlen($bytes) || !@rename($temporary, $path)) {
                 throw new InvalidInputException(\sprintf('Unable to write receipt file: %s', $path));
             }
+
+            $this->path = $path;
         } finally {
             if (is_file($temporary)) {
                 @unlink($temporary);

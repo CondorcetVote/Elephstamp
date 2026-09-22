@@ -7,9 +7,11 @@ This document covers the PHP API. For the `elephstamp` command-line tool, see
 ## Contents
 
 - [Quick start](#quick-start)
+  - [Checking answers before merging them](#checking-answers-before-merging-them)
   - [Collecting every calendar's attestation](#collecting-every-calendars-attestation)
 - [Describing what to stamp](#describing-what-to-stamp)
 - [Reading a receipt](#reading-a-receipt)
+  - [Saving](#saving)
   - [Locating the Bitcoin transaction](#locating-the-bitcoin-transaction)
 - [Verifying against the blockchain](#verifying-against-the-blockchain)
   - [Choosing where block headers come from](#choosing-where-block-headers-come-from)
@@ -56,8 +58,8 @@ $client = new ElephStamp();
 $receipt = Receipt::fromPath('contract.pdf.ots');
 
 if ($client->upgrade($receipt)) {
-    // Something changed: persist the richer proof.
-    $receipt->saveToPath('contract.pdf.ots');
+    // Something changed: persist the richer proof where it came from.
+    $receipt->save();
 }
 
 if ($receipt->isComplete()) {
@@ -90,7 +92,7 @@ foreach ($report->results as $result) {
 }
 
 if ($report->changed()) {
-    $receipt->saveToPath('contract.pdf.ots');
+    $receipt->save();
 }
 
 $report->count(UpgradeOutcome::Failed);   // how many calendars were unreachable
@@ -253,7 +255,7 @@ foreach ($paths as $path) {
     $receipt = Receipt::fromPath($path . '.ots');
 
     if ($client->upgrade($receipt)) {
-        $receipt->saveToPath($path . '.ots');
+        $receipt->save();
     }
 }
 ```
@@ -271,7 +273,32 @@ $receipt->bitcoinBlockHeight();   // int|null (claimed, not verified)
 $receipt->bitcoinAnchors();       // list<BitcoinAnchor>: block, merkle root, transaction (see below)
 $receipt->toBytes();              // the raw .ots content
 $receipt->describe();             // human-readable proof tree (for inspection)
+$receipt->path;                   // the .ots file it was loaded from or last saved to, or null
 ```
+
+### Saving
+
+A receipt remembers its file: `Receipt::fromPath()` (and
+`fromSplFileObject()` on a regular file) records where it came from, and
+`saveToPath()` records where it went. `save()` then writes back there, so the
+usual upgrade loop needs no path bookkeeping:
+
+```php
+$receipt = Receipt::fromPath('contract.pdf.ots');
+
+if ($client->upgrade($receipt)) {
+    $receipt->save();                       // rewrites contract.pdf.ots
+}
+
+$receipt->saveToPath('archive/contract.pdf.ots');
+$receipt->path;                             // now 'archive/contract.pdf.ots'
+```
+
+`save()` throws an `InvalidInputException` on a receipt that never touched
+the disk (fresh from `stamp()` or `fromBytes()`): give it a path with
+`saveToPath()` first. Writes are atomic: the bytes go through a temporary
+file renamed into place, so a crash mid-write never truncates an existing
+receipt. `path` is read-only from outside the class.
 
 ### Locating the Bitcoin transaction
 
