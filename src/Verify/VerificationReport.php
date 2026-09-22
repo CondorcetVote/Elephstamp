@@ -25,9 +25,27 @@ final class VerificationReport
         public readonly string $source,
     ) {}
 
+    /**
+     * The conclusion drawn from the file check and the attestations.
+     *
+     * One verified attestation is enough: a proof is a bundle of independent
+     * paths to the blockchain, so a path that does not match its block (a
+     * calendar that answered nonsense, a corrupt branch) does not undo one
+     * that does. Such mismatches stay visible in {@see $anchors} and in
+     * {@see mismatches()}; only when nothing vouches for the proof does a
+     * mismatch make the verdict {@see Verdict::Failed}.
+     */
     public function verdict(): Verdict
     {
-        if ($this->fileMatches === false || $this->count(AnchorOutcome::MerkleRootMismatch) > 0) {
+        if ($this->fileMatches === false) {
+            return Verdict::Failed;
+        }
+
+        if ($this->count(AnchorOutcome::Verified) > 0) {
+            return Verdict::Verified;
+        }
+
+        if ($this->count(AnchorOutcome::MerkleRootMismatch) > 0) {
             return Verdict::Failed;
         }
 
@@ -35,15 +53,23 @@ final class VerificationReport
             return Verdict::Pending;
         }
 
-        if ($this->count(AnchorOutcome::Verified) > 0) {
-            return Verdict::Verified;
-        }
-
         if ($this->count(AnchorOutcome::AwaitingConfirmations) > 0) {
             return Verdict::AwaitingConfirmations;
         }
 
         return Verdict::Inconclusive;
+    }
+
+    /**
+     * The attestations whose block does not commit to the proof, whatever
+     * the verdict. Worth reporting even on a verified proof: one of its
+     * calendars handed out something wrong.
+     *
+     * @return list<AnchorVerification>
+     */
+    public function mismatches(): array
+    {
+        return $this->filter(AnchorOutcome::MerkleRootMismatch);
     }
 
     public function isVerified(): bool

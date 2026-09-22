@@ -8,6 +8,7 @@ use CondorcetVote\ElephStamp\Exception\CalendarException;
 use CondorcetVote\ElephStamp\Operation\{Append, Sha256};
 use CondorcetVote\ElephStamp\Random\DeterministicRandomSource;
 use CondorcetVote\ElephStamp\Upgrade\UpgradeOutcome;
+use CondorcetVote\ElephStamp\Verify\FakeBlockHeaderSource;
 use CondorcetVote\ElephStamp\{ElephStamp, FileToStamp, Receipt, Timestamp};
 
 /**
@@ -55,15 +56,21 @@ function scriptedCalendar(): CalendarClient
 }
 
 it('reports one outcome per calendar in proof order', function (): void {
+    $blocks = new FakeBlockHeaderSource;
     $client = new ElephStamp(
         calendarClient: scriptedCalendar(),
         calendarUrls: ['https://down.example', 'https://evil.example', 'https://quiet.example', 'https://good.example', 'https://stranger.other'],
         requiredCalendars: 1,
         randomSource: new DeterministicRandomSource,
         upgradeWhitelist: ['https://*.example'],
+        blockHeaderSource: $blocks,
     );
 
     $receipt = $client->stamp(FileToStamp::fromContent('report me'));
+
+    // The honest answer attests the commitment itself in block 700000.
+    $blocks->addBlock(700_000, $receipt->detachedTimestampFile()->timestamp->findPending()[0]['msg']);
+
     $report = $client->upgradeWithReport($receipt);
 
     $byUrl = [];
@@ -175,14 +182,21 @@ function forkingCalendar(): CalendarClient
 
 it('leaves a complete receipt alone unless asked to poll all calendars', function (): void {
     $calendar = forkingCalendar();
+    $blocks = new FakeBlockHeaderSource;
     $client = new ElephStamp(
         calendarClient: $calendar,
         calendarUrls: ['https://one.example', 'https://two.example'],
         randomSource: new DeterministicRandomSource,
         upgradeWhitelist: ['https://*.example'],
+        blockHeaderSource: $blocks,
     );
 
     $receipt = $client->stamp(FileToStamp::fromContent('two branches'));
+
+    // Each calendar attests its own commitment; register the blocks they will name.
+    [$one, $two] = $receipt->detachedTimestampFile()->timestamp->findPending();
+    $blocks->addBlock(700_010, $one['msg']);
+    $blocks->addBlock(700_005, $two['msg']);
 
     // First calendar confirms: the receipt is complete with one anchor.
     $calendar->confirmed['https://one.example'] = 700_010;
@@ -231,3 +245,166 @@ it('reports the block height a still-pending receipt gained from a partial upgra
 
     expect($client->upgradeWithReport($receipt)->results[0]->blockHeight)->toBe(650_000);
 });
+
+/**
+ * A fake client whose calendar has confirmed a receipt, with the chain
+ * tampered with afterwards so that the calendar's answer no longer holds up.
+ */
+function fakeClientWithConfirmedReceipt(string $content, int $height = 800_000): array
+{
+    $client = ElephStamp::fake();
+    $receipt = $client->stamp(FileToStamp::fromContent($content));
+    $client->fakeCalendar()->confirm($receipt, $height);
+
+    return [$client, $receipt];
+}
+
+it('verifies a calendar answer against the blockchain before merging it', function (): void {
+    [$client, $receipt] = fakeClientWithConfirmedReceipt('checked');
+
+    $report = $client->upgradeWithReport($receipt);
+    $result = $report->results[0];
+
+    expect($result->outcome)->toBe(UpgradeOutcome::Upgraded)
+        ->and($result->verified())->toBeTrue()
+        ->and($result->confirmations())->toBe(6)
+        ->and($result->claimedBlockHeight())->toBe(800_000)
+        ->and($result->blockHeight)->toBe(800_000)
+        ->and($result->verifications)->toHaveCount(1)
+        ->and($report->blockHeaderSource)->toBe('fake block source')
+        ->and($receipt->isComplete())->toBeTrue();
+});
+
+it('rejects an answer whose block does not commit to it, and keeps the calendar pending', function (): void {
+    [$client, $receipt] = fakeClientWithConfirmedReceipt('forged answer');
+    $blocks = $client->fakeBlockSource();
+
+    // The chain says block 800000 holds another merkle root.
+    $blocks->reset();
+    $blocks->addBlock(800_000, str_repeat("\xee", 32));
+
+    $report = $client->upgradeWithReport($receipt);
+    $result = $report->results[0];
+
+    expect($result->outcome)->toBe(UpgradeOutcome::Rejected)
+        ->and($result->error)->toContain('block 800000')->toContain('merkle root mismatch')
+        ->and($result->verified())->toBeFalse()
+        ->and($result->blockHeight)->toBeNull()
+        ->and($result->claimedBlockHeight())->toBe(800_000)
+        ->and($report->changed())->toBeFalse()
+        ->and($receipt->isPending())->toBeTrue()
+        ->and($receipt->bitcoinAttestations())->toBe([]);
+
+    // Once the chain agrees with the calendar, the same poll goes through.
+    $blocks->reset();
+    $blocks->addBlock(800_000, $receipt->detachedTimestampFile()->timestamp->findPending()[0]['msg']);
+
+    expect($client->upgrade($receipt))->toBeTrue()
+        ->and($receipt->isComplete())->toBeTrue();
+});
+
+it('does not merge an answer whose block is still too shallow', function (): void {
+    [$client, $receipt] = fakeClientWithConfirmedReceipt('too fresh');
+    $client->fakeBlockSource()->setTipHeight(800_002);
+
+    $result = $client->upgradeWithReport($receipt)->results[0];
+
+    expect($result->outcome)->toBe(UpgradeOutcome::Unconfirmed)
+        ->and($result->outcome->wasContacted())->toBeTrue()
+        ->and($result->error)->toContain('3 of the 6 confirmations')
+        ->and($result->confirmations())->toBe(3)
+        ->and($result->verified())->toBeFalse()
+        ->and($receipt->isPending())->toBeTrue();
+
+    // A lower threshold accepts it; the chain growing does too.
+    expect($client->upgradeWithReport($receipt, requiredConfirmations: 3)->results[0]->outcome)->toBe(UpgradeOutcome::Upgraded)
+        ->and($receipt->isComplete())->toBeTrue();
+});
+
+it('does not merge an answer it cannot check', function (): void {
+    [$client, $receipt] = fakeClientWithConfirmedReceipt('unknown chain');
+    $client->fakeBlockSource()->reset();
+
+    $report = $client->upgradeWithReport($receipt);
+    $result = $report->results[0];
+
+    expect($result->outcome)->toBe(UpgradeOutcome::Unverifiable)
+        ->and($result->error)->toContain('block 800000')->toContain('no block registered')
+        ->and($result->confirmations())->toBeNull()
+        ->and($report->blockHeaderSource)->toBe('fake block source')
+        ->and($receipt->isPending())->toBeTrue();
+
+    // Tip known, block unknown.
+    $client->fakeBlockSource()->setTipHeight(900_000);
+
+    expect($client->upgradeWithReport($receipt)->results[0]->outcome)->toBe(UpgradeOutcome::Unverifiable);
+});
+
+it('merges unchecked answers when verification is disabled', function (): void {
+    [$client, $receipt] = fakeClientWithConfirmedReceipt('trusting');
+    $client->fakeBlockSource()->reset();
+    $client->fakeBlockSource()->addBlock(800_000, str_repeat("\xee", 32));
+
+    $report = $client->upgradeWithReport($receipt, verify: false);
+    $result = $report->results[0];
+
+    expect($result->outcome)->toBe(UpgradeOutcome::Upgraded)
+        ->and($result->verified())->toBeNull()
+        ->and($result->verifications)->toBe([])
+        ->and($result->confirmations())->toBeNull()
+        ->and($result->claimedBlockHeight())->toBeNull()
+        ->and($report->blockHeaderSource)->toBeNull()
+        ->and($receipt->isComplete())->toBeTrue()
+        ->and($client->verify($receipt)->verdict())->toBe(CondorcetVote\ElephStamp\Verify\Verdict::Failed);
+});
+
+it('does not consult the block source when no answer carries a Bitcoin attestation', function (): void {
+    $client = ElephStamp::fake();
+    $receipt = $client->stamp(FileToStamp::fromContent('nothing yet'));
+    $client->fakeBlockSource()->reset();
+
+    $report = $client->upgradeWithReport($receipt);
+
+    expect($report->results[0]->outcome)->toBe(UpgradeOutcome::Pending)
+        ->and($report->blockHeaderSource)->toBeNull();
+});
+
+it('keeps the honest calendar and drops the lying one in a single pass', function (): void {
+    $calendar = forkingCalendar();
+    $blocks = new FakeBlockHeaderSource;
+    $client = new ElephStamp(
+        calendarClient: $calendar,
+        calendarUrls: ['https://honest.example', 'https://liar.example'],
+        randomSource: new DeterministicRandomSource,
+        upgradeWhitelist: ['https://*.example'],
+        blockHeaderSource: $blocks,
+    );
+
+    $receipt = $client->stamp(FileToStamp::fromContent('mixed'));
+    [$honest, $liar] = $receipt->detachedTimestampFile()->timestamp->findPending();
+    $blocks->addBlock(700_010, $honest['msg']);
+    $blocks->addBlock(700_011, str_repeat("\x11", 32));
+    $calendar->confirmed['https://honest.example'] = 700_010;
+    $calendar->confirmed['https://liar.example'] = 700_011;
+
+    $report = $client->upgradeWithReport($receipt);
+
+    expect($report->results[0]->outcome)->toBe(UpgradeOutcome::Upgraded)
+        ->and($report->results[1]->outcome)->toBe(UpgradeOutcome::Rejected)
+        ->and($receipt->bitcoinAnchors())->toHaveCount(1)
+        ->and($receipt->bitcoinBlockHeight())->toBe(700_010)
+        ->and($client->verify($receipt)->verdict())->toBe(CondorcetVote\ElephStamp\Verify\Verdict::Verified);
+
+    // The liar is still pending in the proof and would be asked again with pollAll.
+    $again = $client->upgradeWithReport($receipt, pollAll: true);
+
+    expect($again->results[0]->outcome)->toBe(UpgradeOutcome::Confirmed)
+        ->and($again->results[1]->outcome)->toBe(UpgradeOutcome::Rejected);
+});
+
+it('rejects a confirmation threshold below one', function (): void {
+    $client = ElephStamp::fake();
+    $receipt = $client->stamp(FileToStamp::fromContent('zero'));
+
+    $client->upgrade($receipt, requiredConfirmations: 0);
+})->throws(CondorcetVote\ElephStamp\Exception\InvalidInputException::class, 'requiredConfirmations');

@@ -68,6 +68,13 @@ if ($receipt->isComplete()) {
 `upgrade()` performs a single polling pass and returns whether the proof
 changed. Call it again later while the receipt is still pending.
 
+A calendar's answer is **checked against the blockchain before it is merged**
+(see [below](#checking-answers-before-merging-them)): an attestation naming a
+block that does not commit to the proof, or a block too recent to be final,
+is not merged and the calendar stays pending. This needs a block header
+source; without configuration it is the mempool.space explorer, exactly as
+for `verify()`.
+
 To learn what each calendar answered, use `upgradeWithReport()` instead. It
 merges exactly like `upgrade()` but returns an `UpgradeReport` with one
 `CalendarUpgradeResult` per pending attestation:
@@ -79,7 +86,7 @@ $report = $client->upgradeWithReport($receipt);
 
 foreach ($report->results as $result) {
     echo $result->calendarUrl, ': ', $result->outcome->name, "\n";
-    // Upgraded | Unchanged | Pending | Failed | Rejected | Skipped
+    // Upgraded | Unchanged | Pending | Failed | Rejected | Unconfirmed | Unverifiable | Skipped
 }
 
 if ($report->changed()) {
@@ -90,9 +97,64 @@ $report->count(UpgradeOutcome::Failed);   // how many calendars were unreachable
 $report->filter(UpgradeOutcome::Skipped); // calendars not on the upgrade whitelist
 ```
 
-`Failed` and `Rejected` results carry the calendar's error in `$result->error`;
-`Upgraded`, `Unchanged` and `Confirmed` ones carry the lowest Bitcoin block
-height now attested below that submission in `$result->blockHeight`.
+`Failed`, `Rejected`, `Unconfirmed` and `Unverifiable` results carry the
+reason in `$result->error`; `Upgraded`, `Unchanged` and `Confirmed` ones carry
+the lowest Bitcoin block height now attested below that submission in
+`$result->blockHeight`. Every result also exposes what the check of the
+calendar's answer gave, when there was something to check:
+
+```php
+$result->verifications;        // list<AnchorVerification>: one per Bitcoin attestation in the answer
+$result->verified();           // true, false, or null when the answer carried no Bitcoin attestation
+$result->confirmations();      // depth of the shallowest block named, or null
+$result->claimedBlockHeight(); // the block the answer names, merged or not
+$report->blockHeaderSource;    // "mempool.space", or null when nothing needed checking
+```
+
+### Checking answers before merging them
+
+An `.ots` is only as good as its weakest branch, and a calendar is a third
+party: a buggy or hostile one could return an attestation naming a block that
+does not commit to your proof, or a block that has just been mined and may
+still be reorganised away. Merged blindly, either would make the receipt
+"complete" while `verify()` fails it, and once a receipt is complete the
+other calendars are no longer polled by default, so the damage would stick.
+
+So `upgrade()` and `upgradeWithReport()` verify every Bitcoin attestation a
+calendar returns exactly like `verify()` does, through the configured
+`BlockHeaderSource`, **before** anything is merged. Only a fully verified
+answer becomes part of the receipt:
+
+| Outcome | What the check found | Merged? |
+| --- | --- | --- |
+| `Upgraded` / `Unchanged` | Every attestation in the answer matches its block, buried under enough confirmations. | yes |
+| `Rejected` | A block's merkle root differs from the one the answer leads to (or the answer is for another digest). Hostile or corrupt. | no |
+| `Unconfirmed` | The merkle root matches but the block is still shallower than required. Poll again later. | no |
+| `Unverifiable` | The source could not provide the header (unreachable, unknown block), or the attestation sits below an operation this library cannot compute. | no |
+
+The calendar stays pending in the receipt whenever its answer is not merged,
+so the next pass asks it again. The chain tip is fetched once per pass, then
+one header per attestation, so an upgrade costs at most one explorer request
+more than there are answers to check.
+
+```php
+// Default: verify, and require six confirmations like verify() does.
+$client->upgrade($receipt);
+
+// Accept shallower blocks.
+$client->upgrade($receipt, requiredConfirmations: 1);
+
+// Merge whatever the calendars return, unchecked, like the reference client.
+$client->upgrade($receipt, verify: false);
+```
+
+Verification is skipped, and no explorer contacted, when an answer carries
+no Bitcoin attestation (still pending, or intermediate operations only).
+Pick the source with the `blockHeaderSource` constructor argument, see
+[Choosing where block headers come from](#choosing-where-block-headers-come-from);
+a custom `CalendarClient` used in tests should come with a
+`FakeBlockHeaderSource` holding the blocks it will name, or upgrade with
+`verify: false`.
 
 ### Collecting every calendar's attestation
 
@@ -302,6 +364,24 @@ A block counts once it is buried under six confirmations (`Verifier::DEFAULT_REQ
 pass a third argument to change that. `Verified` needs a single attestation to
 reach it; the attested date is the time of the earliest such block.
 
+**One good attestation is enough.** A proof usually holds one branch per
+calendar, and they are independent: a branch whose block does not commit to
+the proof does not undo one that does. So a mismatch only makes the verdict
+`Failed` when no other attestation is verified (a file mismatch always does).
+Mismatches stay visible whatever the verdict, and are worth surfacing: one
+of the calendars handed out something wrong.
+
+```php
+if ($report->isVerified() && $report->mismatches() !== []) {
+    foreach ($report->mismatches() as $verification) {
+        echo 'Ignored: block ', $verification->blockHeight(), ' does not commit to the proof', "\n";
+    }
+}
+```
+
+`Verifier::checkAnchors()` runs the same check on any list of `BitcoinAnchor`,
+fetching the chain tip once; it is what `upgrade()` uses on calendar answers.
+
 ### Choosing where block headers come from
 
 Without configuration, block headers come from **mempool.space**
@@ -343,25 +423,34 @@ never followed, tiny response cap, timeouts on idle and total duration.
 
 ### Verifying in fake mode
 
-`ElephStamp::fake()` comes with a `FakeBlockHeaderSource`. Register the blocks
-a receipt claims, and verification works offline:
+`ElephStamp::fake()` comes with a `FakeBlockHeaderSource`, and the fake
+calendar **mines its confirmations into it**: confirming registers a block
+whose merkle root is the one the confirmed proofs lead to. So a confirmed
+receipt upgrades (with verification) and verifies without further setup:
 
 ```php
 $client = ElephStamp::fake();
 
 $receipt = $client->stamp(FileToStamp::fromContent('hello'));
-$client->fakeCalendar()->confirmAll(812_345);
-$client->upgrade($receipt);
-
-// Register a block 812345 whose merkle root is the one the receipt leads to.
-$client->fakeBlockSource()->anchor($receipt, new DateTimeImmutable('2024-06-01 12:00 UTC'));
+$client->fakeCalendar()->confirmAll(812_345, new DateTimeImmutable('2024-06-01 12:00 UTC'));
+$client->upgrade($receipt);             // verified against the fake chain, merged
 
 $client->verify($receipt)->verdict();   // Verdict::Verified
+$client->verify($receipt)->attestedAt(); // 2024-06-01 12:00 UTC
 
-// Simulate a chain that has not grown yet, or a block that does not match.
-$client->fakeBlockSource()->setTipHeight(812_346);        // → AwaitingConfirmations
-$client->fakeBlockSource()->addBlock(812_345, $otherRoot); // throws: a fake height holds one root
+// Simulate a chain that has not grown yet: the upgrade holds the answer back.
+$client->fakeBlockSource()->setTipHeight(812_346);  // upgrade → Unconfirmed, verify → AwaitingConfirmations
+
+// Simulate a calendar that lies: rewrite the chain behind its back.
+$blocks = $client->fakeBlockSource();
+$blocks->reset();
+$blocks->addBlock(812_345, $otherRoot);             // upgrade → Rejected, verify → Failed
+$blocks->reset();                                   // upgrade → Unverifiable, verify → Inconclusive
 ```
+
+`FakeBlockHeaderSource::anchor($receipt)` still registers, after the fact,
+the blocks a receipt already carries (useful for a receipt loaded from disk),
+and `addBlock()` refuses to give a height a second, different merkle root.
 
 ## Testing: fake mode
 
@@ -398,8 +487,22 @@ $receipt = $client->stamp(FileToStamp::fromContent('data'));
 
 $calendar->confirm($receipt);  // confirm just this receipt
 // or
-$calendar->confirmAll();       // confirm every commitment submitted so far
+$calendar->confirmAll();       // confirm every commitment submitted so far and not confirmed yet
 ```
+
+Each call mines **one block**: the commitments it confirms are bound in a
+merkle tree, like a real calendar aggregating its clients, and the block is
+registered in the calendar's `blocks()` (the `FakeBlockHeaderSource` the
+client verifies against). Without an explicit height the first block is
+`FakeCalendarClient::DEFAULT_BLOCK_HEIGHT` (800000) and the next ones follow
+it, so repeated `confirmAll()` calls just grow the chain. A block is immutable
+once mined: confirming other commitments at a height already used throws an
+`InvalidInputException`, and an already confirmed commitment stays in its
+block. `reset()` forgets submissions, confirmations and the mined blocks.
+
+To share a chain between a calendar and a client, build the calendar with it:
+`new FakeCalendarClient(blocks: $source)`; `ElephStamp::fake($calendar, $source)`
+refuses a pair that do not match.
 
 ## Configuration
 

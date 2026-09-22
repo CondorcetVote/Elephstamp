@@ -17,11 +17,18 @@ final class FakeClientFactory implements ClientFactory
 {
     public ?ClientOptions $lastOptions = null;
 
+    public readonly FakeBlockHeaderSource $blocks;
+
+    /**
+     * @param FakeBlockHeaderSource|null $blocks the chain to verify against; by default the one a fake calendar mines into
+     */
     public function __construct(
         public readonly CalendarClient $calendar = new FakeCalendarClient,
         public readonly string $calendarUrl = ElephStamp::FAKE_CALENDAR_URL,
-        public readonly FakeBlockHeaderSource $blocks = new FakeBlockHeaderSource,
-    ) {}
+        ?FakeBlockHeaderSource $blocks = null,
+    ) {
+        $this->blocks = $blocks ?? ($calendar instanceof FakeCalendarClient ? $calendar->blocks() : new FakeBlockHeaderSource);
+    }
 
     public function create(ClientOptions $options): ElephStamp
     {

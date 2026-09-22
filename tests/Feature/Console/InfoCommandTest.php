@@ -214,6 +214,7 @@ it('stops calling the other calendars upgradable once the proof is complete', fu
         calendarClient: $calendar,
         calendarUrls: ['https://one.calendar.opentimestamps.org', 'https://two.calendar.opentimestamps.org'],
         randomSource: new CondorcetVote\ElephStamp\Random\DeterministicRandomSource,
+        blockHeaderSource: $calendar->blocks(),
     );
     $receipt = $client->stamp(CondorcetVote\ElephStamp\FileToStamp::fromContent('one of two'));
     $calendar->confirm($receipt, 700_000);

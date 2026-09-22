@@ -72,6 +72,7 @@ it('accepts a digest instead of the file', function (): void {
 });
 
 it('fails when the block does not commit to the proof', function (): void {
+    $this->factory->blocks->reset();
     $this->factory->blocks->addBlock(800_000, str_repeat("\xee", 32));
 
     $this->tester->run(['verify', 'receipts' => [$this->path]]);
@@ -106,6 +107,8 @@ it('reports a pending proof and an unreachable source as not verifiable yet', fu
         ->toContain('run "upgrade" first');
 
     // Complete proof, but the source knows no block at all.
+    $this->factory->blocks->reset();
+
     expect($this->tester->run(['verify', 'receipts' => [$this->path]]))->toBe(VerifyCommand::NOT_YET)
         ->and($this->tester->getDisplay())->toContain('INCONCLUSIVE')
         ->toContain('unavailable');
@@ -182,4 +185,32 @@ it('refuses inconsistent options', function (): void {
 
     $this->tester->run(['verify', 'receipts' => [$this->path], '--min-confirmations' => '0']);
     $this->tester->assertCommandFailed();
+});
+
+it('stays verified but warns when another attestation does not match its block', function (): void {
+    // Graft a second attestation naming a block that holds something else.
+    $node = $this->receipt->detachedTimestampFile()->timestamp->findPending()[0]['node'];
+    $branch = new CondorcetVote\ElephStamp\Timestamp($node->msg);
+    $branch->addOp(new CondorcetVote\ElephStamp\Operation\Sha256)->addAttestation(new CondorcetVote\ElephStamp\Attestation\BitcoinAttestation(800_001));
+    $node->merge($branch);
+    $this->receipt->saveToPath($this->path);
+
+    $this->factory->blocks->addBlock(800_001, str_repeat("\xee", 32));
+    $this->factory->blocks->setTipHeight(800_010);
+
+    $this->tester->run(['verify', 'receipts' => [$this->path]]);
+
+    $this->tester->assertCommandIsSuccessful();
+
+    $display = unwrapped($this->tester->getDisplay());
+
+    expect($display)->toContain('VERIFIED')
+        ->toContain(unwrapped('Warning: the attestation for block 800001 does not commit to this proof and was ignored'))
+        ->toContain('MISMATCH');
+
+    $this->tester->run(['verify', 'receipts' => [$this->path], '--json' => true]);
+    $document = json_decode($this->tester->getDisplay(), true, flags: \JSON_THROW_ON_ERROR);
+
+    expect($document['verdict'])->toBe('verified')
+        ->and(array_column($document['bitcoin_attestations'], 'outcome'))->toBe(['verified', 'merkle_root_mismatch']);
 });

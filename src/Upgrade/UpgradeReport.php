@@ -16,8 +16,12 @@ final class UpgradeReport
 {
     /**
      * @param list<CalendarUpgradeResult> $results
+     * @param string|null                 $blockHeaderSource the source the calendars' answers were checked against; null when nothing needed checking or verification was disabled
      */
-    public function __construct(public readonly array $results) {}
+    public function __construct(
+        public readonly array $results,
+        public readonly ?string $blockHeaderSource = null,
+    ) {}
 
     /**
      * Whether the pass added anything new to the receipt.

@@ -12,6 +12,8 @@ enum Verdict
     /**
      * The file matches the proof (when given) and at least one Bitcoin
      * attestation is confirmed by a block with the expected merkle root.
+     * Other attestations may still be wrong; they are listed in
+     * {@see VerificationReport::mismatches()}.
      */
     case Verified;
 
@@ -23,7 +25,8 @@ enum Verdict
 
     /**
      * The file does not match the proof, or a block's merkle root differs
-     * from the proof's. The proof is not valid for this file.
+     * from the proof's and no other attestation is verified. The proof is
+     * not valid for this file.
      */
     case Failed;
 

@@ -31,9 +31,26 @@ enum UpgradeOutcome
 
     /**
      * The calendar answered with a timestamp that does not commit to the
-     * requested digest: hostile or corrupt, so it was discarded.
+     * requested digest, or whose Bitcoin attestation names a block that
+     * does not commit to it: hostile or corrupt, so it was discarded.
      */
     case Rejected;
+
+    /**
+     * The calendar's Bitcoin attestation matches its block, but that block
+     * is still too shallow (fewer confirmations than required), so the
+     * answer was not merged yet. Poll again later.
+     */
+    case Unconfirmed;
+
+    /**
+     * The calendar's Bitcoin attestation could not be checked against the
+     * blockchain (block header source unavailable, unknown block, or an
+     * attestation below an operation this library cannot compute), so the
+     * answer was not merged. Poll again later, or upgrade without
+     * verification.
+     */
+    case Unverifiable;
 
     /**
      * The calendar URI is not on the upgrade whitelist, so it was not contacted.

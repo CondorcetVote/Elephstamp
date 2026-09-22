@@ -6,7 +6,7 @@ namespace CondorcetVote\ElephStamp\Console\Command;
 
 use CondorcetVote\ElephStamp\Console\{ClientFactory, ClientOptions, Formatter};
 use CondorcetVote\ElephStamp\Exception\{ElephStampException, InvalidInputException};
-use CondorcetVote\ElephStamp\Verify\{AnchorOutcome, AnchorVerification, Explorer, VerificationReport, Verdict, Verifier};
+use CondorcetVote\ElephStamp\Verify\{AnchorOutcome, AnchorVerification, VerificationReport, Verdict, Verifier};
 use CondorcetVote\ElephStamp\{FileToStamp, Receipt};
 use Symfony\Component\Console\Attribute\{Argument, AsCommand, Option};
 use Symfony\Component\Console\Command\Command;
@@ -20,7 +20,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         Recomputes everything a proof contains (file digest, operations, transaction,
         merkle branch) and asks a block explorer for the header of every block the proof
         names. The proof is <comment>verified</comment> when the block's merkle root equals the one the
-        proof leads to, and the block is buried under <comment>--min-confirmations</comment> blocks.
+        proof leads to, and the block is buried under <comment>--min-confirmations</comment> blocks. One such
+        attestation is enough: a proof usually holds one per calendar, and an attestation
+        that does not match its block is reported but does not undo the others.
 
         The original file is found next to the proof (<comment>contract.pdf</comment> for
         <comment>contract.pdf.ots</comment>), or given with <comment>--file</comment> or as a <comment>--digest</comment>. Without it, only the
@@ -97,12 +99,7 @@ final class VerifyCommand
         }
 
         try {
-            $explorers = array_map(
-                static fn(string $name): Explorer => Explorer::tryFrom($name) ?? throw new InvalidInputException(\sprintf('Unknown explorer "%s"; known: %s', $name, implode(', ', array_column(Explorer::cases(), 'value')))),
-                $explorer,
-            );
-
-            $client = $this->clientFactory->create(new ClientOptions(timeout: $timeout, explorers: $explorers, explorerUrls: $explorerUrl));
+            $client = $this->clientFactory->create(new ClientOptions(timeout: $timeout, explorers: ClientOptions::explorersFromNames($explorer), explorerUrls: $explorerUrl));
         } catch (ElephStampException $exception) {
             $io->error($exception->getMessage());
 
@@ -236,6 +233,7 @@ final class VerifyCommand
                 'VERIFIED',
                 \sprintf('%s existed before %s (Bitcoin block %d).', $subject, $report->attestedAt()?->format('Y-m-d H:i:s \U\T\C'), $report->attestingAnchor()?->blockHeight()),
                 $original === null ? 'No original file was checked: this proves the proof, not that it belongs to a given file (use --file).' : null,
+                self::mismatchWarning($report),
             ]],
             Verdict::AwaitingConfirmations => ['fg=black;bg=yellow;options=bold', [
                 'AWAITING CONFIRMATIONS',
@@ -245,7 +243,7 @@ final class VerifyCommand
                 'VERIFICATION FAILED',
                 $report->fileMatches === false
                     ? \sprintf('%s is not the file this proof was made for: its digest differs from the one the proof commits to.', $subject)
-                    : 'A block\'s merkle root differs from the one the proof leads to: the proof is corrupt, forged, or names the wrong block.',
+                    : 'No block commits to this proof: every attestation names a block whose merkle root differs from the one the proof leads to (corrupt, forged, or wrong block).',
             ]],
             Verdict::Pending => ['fg=black;bg=yellow;options=bold', [
                 'PENDING',
@@ -258,6 +256,25 @@ final class VerifyCommand
         };
 
         $io->block(array_filter($lines, static fn(?string $line): bool => $line !== null), type: null, style: $style, padding: true);
+    }
+
+    /**
+     * A verified proof may still carry attestations that do not match their
+     * block: they change nothing to the verdict but deserve a word.
+     */
+    private static function mismatchWarning(VerificationReport $report): ?string
+    {
+        $mismatches = $report->mismatches();
+
+        if ($mismatches === []) {
+            return null;
+        }
+
+        $blocks = implode(', ', array_map(static fn(AnchorVerification $v): string => (string) $v->blockHeight(), $mismatches));
+
+        return \count($mismatches) === 1
+            ? \sprintf('Warning: the attestation for block %s does not commit to this proof and was ignored; a calendar handed out something wrong.', $blocks)
+            : \sprintf('Warning: %d attestations (blocks %s) do not commit to this proof and were ignored; some calendars handed out something wrong.', \count($mismatches), $blocks);
     }
 
     private static function originalLine(?string $original, ?bool $matches): string

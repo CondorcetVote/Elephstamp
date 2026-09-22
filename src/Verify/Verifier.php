@@ -44,10 +44,31 @@ final class Verifier
     {
         $fileMatches = $file === null ? null : hash_equals($receipt->fileDigest(), $file->digest($receipt->hashOperation()));
 
-        $anchors = $receipt->bitcoinAnchors();
+        return new VerificationReport(
+            $fileMatches,
+            $this->checkAnchors($receipt->bitcoinAnchors()),
+            $this->requiredConfirmations,
+            $this->source->describe(),
+        );
+    }
 
+    /**
+     * Check Bitcoin attestations against the blocks they name, whatever
+     * proof they come from: a receipt, or a calendar's answer about to be
+     * merged into one.
+     *
+     * The chain tip is fetched once for the whole batch, then one header per
+     * attestation. Never throws for a source failure: the affected
+     * attestations are reported as {@see AnchorOutcome::BlockUnavailable}.
+     *
+     * @param list<BitcoinAnchor> $anchors
+     *
+     * @return list<AnchorVerification> aligned with $anchors
+     */
+    public function checkAnchors(array $anchors): array
+    {
         if ($anchors === []) {
-            return new VerificationReport($fileMatches, [], $this->requiredConfirmations, $this->source->describe());
+            return [];
         }
 
         try {
@@ -55,20 +76,10 @@ final class Verifier
         } catch (BlockSourceException $exception) {
             // Without a tip nothing can be counted; the headers would most
             // likely fail too, so report every attestation as unavailable.
-            return new VerificationReport(
-                $fileMatches,
-                array_map(static fn(BitcoinAnchor $anchor): AnchorVerification => new AnchorVerification($anchor, AnchorOutcome::BlockUnavailable, error: $exception->getMessage()), $anchors),
-                $this->requiredConfirmations,
-                $this->source->describe(),
-            );
+            return array_map(static fn(BitcoinAnchor $anchor): AnchorVerification => new AnchorVerification($anchor, AnchorOutcome::BlockUnavailable, error: $exception->getMessage()), $anchors);
         }
 
-        return new VerificationReport(
-            $fileMatches,
-            array_map(fn(BitcoinAnchor $anchor): AnchorVerification => $this->check($anchor, $tip), $anchors),
-            $this->requiredConfirmations,
-            $this->source->describe(),
-        );
+        return array_map(fn(BitcoinAnchor $anchor): AnchorVerification => $this->check($anchor, $tip), $anchors);
     }
 
     private function check(BitcoinAnchor $anchor, int $tip): AnchorVerification

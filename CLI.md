@@ -124,21 +124,54 @@ elephstamp upgrade contract.pdf.ots
 elephstamp upgrade proofs/*.ots
 elephstamp upgrade contract.pdf.ots --dry-run
 elephstamp upgrade contract.pdf.ots --all
+elephstamp upgrade contract.pdf.ots --explorer blockstream --min-confirmations 3
+elephstamp upgrade contract.pdf.ots --no-verify
 elephstamp upgrade contract.pdf.ots -l 'https://*.internal.example' --timeout 5
 ```
 
-For each proof, polls every calendar it is pending on and prints one line per
-calendar with what it answered:
+For each proof, polls every calendar it is pending on, **checks every answer
+against the blockchain** and prints one line per calendar with what it
+answered:
 
 ```
   Calendar                                        Commitment          Answer
-  https://alice.btc.calendar.opentimestamps.org   6aada194…779bcb5c   upgraded — Bitcoin block 912345
+  https://alice.btc.calendar.opentimestamps.org   6aada194…779bcb5c   upgraded — Bitcoin block 912345, verified (14 confirmations)
   https://bob.btc.calendar.opentimestamps.org     6aada194…9b8504a8   still pending — not confirmed yet
   https://finney.calendar.eternitywall.com        6aada193…4fc5e50b   failed — Calendar https://finney…: Idle timeout reached
   https://ots.private.example                     6aada194…95adc728   skipped — not on the whitelist, not contacted
 
+ Answers checked against the blockchain through mempool.space before being merged.
+
  [OK] Now complete: anchored in Bitcoin block 912345. Saved to contract.pdf.ots.
 ```
+
+A calendar is a third party, and its answer is untrusted: it could name a
+block that does not commit to the proof, or one mined a minute ago that a
+reorganisation may still drop. Merged blindly, either would leave you with a
+"complete" proof that `verify` fails. So before anything is merged, each
+Bitcoin attestation in an answer is checked exactly as `verify` would: the
+block explorer (mempool.space by default, see `--explorer`) is asked for the
+block's header, the merkle roots must match, and the block must be buried
+under `--min-confirmations` blocks (6). An answer that fails the check is not
+merged, and the calendar stays pending to be asked again next time:
+
+```
+  Calendar                                        Commitment          Answer
+  https://alice.btc.calendar.opentimestamps.org   6aada194…779bcb5c   unconfirmed — Bitcoin block 912345 has 3 of the 6 confirmations required, not merged yet
+  https://bob.btc.calendar.opentimestamps.org     6aada194…9b8504a8   rejected — Bitcoin block 912340 does not commit to the calendar's proof (merkle root mismatch)
+
+ Answers checked against the blockchain through mempool.space before being merged.
+
+ ! [NOTE] Still pending, nothing new to save.
+ !
+ !        A calendar answered with a proof that does not hold up (another digest, or a block that does not commit to
+ !        it); its answer was discarded.
+ !        A calendar's block is still too shallow; its answer will be merged once it reaches --min-confirmations, try
+ !        again later.
+```
+
+`--no-verify` merges whatever the calendars return, as the reference `ots`
+client does; the answer then reads `upgraded — Bitcoin block 912345 (not checked)`.
 
 | Answer | Meaning |
 | --- | --- |
@@ -146,7 +179,9 @@ calendar with what it answered:
 | `unchanged` | The calendar answered with material the proof already held. |
 | `still pending` | The calendar has nothing yet for this commitment. Try later. |
 | `failed` | Network or protocol error; the calendar's message follows. |
-| `rejected` | The calendar returned a proof for a *different* digest. Hostile or corrupt, discarded. |
+| `rejected` | The calendar returned a proof for a *different* digest, or naming a block whose merkle root differs from the one the proof leads to. Hostile or corrupt, discarded. |
+| `unconfirmed` | The answer matches its block, but the block is still shallower than `--min-confirmations`. Not merged yet; try later. |
+| `unverifiable` | The answer could not be checked: the explorer was unreachable or knows no such block, or the attestation sits below an operation this tool cannot compute. Not merged. |
 | `skipped` | The calendar's host is not on the whitelist, so it was never contacted. |
 | `confirmed` | A Bitcoin attestation already hangs below this submission, nothing to ask. Only with `--all`. |
 
@@ -162,15 +197,19 @@ proof then carries one attestation per branch (`info` lists them all,
 
 ```
   Calendar                                        Commitment          Answer
-  https://finney.calendar.eternitywall.com        6aad431a…28af8004   upgraded — Bitcoin block 967572
-  https://btc.calendar.catallaxy.com              6aad431a…9c4a52ee   upgraded — Bitcoin block 967603
+  https://finney.calendar.eternitywall.com        6aad431a…28af8004   upgraded — Bitcoin block 967572, verified (49 confirmations)
+  https://btc.calendar.catallaxy.com              6aad431a…9c4a52ee   upgraded — Bitcoin block 967603, verified (18 confirmations)
   https://bob.btc.calendar.opentimestamps.org     6aad431a…57692c88   confirmed — already anchored in Bitcoin block 967571, not polled
   https://alice.btc.calendar.opentimestamps.org   6aad431b…fbf30fbc   still pending — not confirmed yet
 
+ Answers checked against the blockchain through mempool.space before being merged.
+
  [OK] Complete (Bitcoin block 967571): 2 new attestations merged. Confirmed through 3 of 4 calendars. Saved to contract.pdf.ots.
-``` When nothing
-changed, the note explains why (confirmation still pending, unreachable
-calendars, skipped hosts) and what to do about it.
+```
+
+When nothing changed, the note explains why (confirmation still pending,
+unreachable calendars, skipped hosts, answers held back by the check) and
+what to do about it.
 
 | Option | Effect |
 | --- | --- |
@@ -179,7 +218,11 @@ calendars, skipped hosts) and what to do about it.
 | `-o, --output=PATH` | Write the upgraded proof here instead of in place. Single proof only. |
 | `-l, --whitelist=PATTERN` | Allow contacting calendars matching this `https://host` pattern (globs allowed). Repeatable. |
 | `--no-default-whitelist` | Drop the built-in public-operator patterns; only `--whitelist` ones remain. |
-| `--timeout=SECONDS` | Give up on a calendar after this long. |
+| `--no-verify` | Merge the answers without checking them against the blockchain first. |
+| `--min-confirmations=N` | Depth a block named by a calendar needs before its attestation is merged, itself included. Default `6`. |
+| `-e, --explorer=NAME` | Which explorer checks the answers: `mempool` (mempool.space, the default) or `blockstream` (blockstream.info). Repeatable: all named explorers must agree. |
+| `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
+| `--timeout=SECONDS` | Give up on a calendar or an explorer after this long. |
 | `--json` | Machine-readable output, see [JSON output](#json-output). |
 
 With several proofs a summary closes the report:
@@ -234,11 +277,11 @@ opens the report as a full-width banner:
 
 | Banner | Meaning | Exit |
 | --- | --- | --- |
-| `VERIFIED` | The file matches the proof (when checked) and at least one block confirms it. The date is the time of the earliest such block. | `0` |
+| `VERIFIED` | The file matches the proof (when checked) and at least one block confirms it. The date is the time of the earliest such block. Attestations that do *not* match their block are listed as `MISMATCH` and called out in a warning, but do not undo the verified one. | `0` |
 | `AWAITING CONFIRMATIONS` | The merkle root matches but every matching block is still shallower than `--min-confirmations`. | `2` |
 | `PENDING` | No Bitcoin attestation yet; run `upgrade` first. | `2` |
 | `INCONCLUSIVE` | Attestations exist but no header could be checked (explorer unreachable, unknown block). | `2` |
-| `VERIFICATION FAILED` | The file is not the one the proof commits to, or a block's merkle root differs from the proof's: corrupt, forged, or wrong block. | `1` |
+| `VERIFICATION FAILED` | The file is not the one the proof commits to, or no block commits to the proof (every attestation names a block whose merkle root differs from the proof's, or the rest are not verifiable yet): corrupt, forged, or wrong block. | `1` |
 
 Per block, the *Result* column reads `verified`, `matches, awaiting
 confirmations (n of 6)`, `MISMATCH`, `unavailable — <reason>` or `not
@@ -478,12 +521,16 @@ be determined.
     "was_already_complete": false,
     "changed": true,
     "saved_to": "contract.pdf.ots",
+    "block_header_source": "mempool.space",
     "calendars": [
         {
             "url": "https://alice.btc.calendar.opentimestamps.org",
             "commitment": "6aada194…779bcb5c",
             "outcome": "upgraded",
             "block_height": 912345,
+            "claimed_block_height": 912345,
+            "verified": true,
+            "confirmations": 14,
             "error": null
         }
     ]
@@ -491,10 +538,15 @@ be determined.
 ```
 
 `outcome` is one of `upgraded`, `unchanged`, `pending`, `failed`, `rejected`,
-`skipped`, `confirmed`; `error` is set for `failed` and `rejected`;
-`block_height` is the lowest block now attested below that submission, when
-there is one. `saved_to` is `null`
-when nothing was written (no change, or `--dry-run`).
+`unconfirmed`, `unverifiable`, `skipped`, `confirmed`; `error` is set for
+`failed`, `rejected`, `unconfirmed` and `unverifiable`. `block_height` is the
+lowest block now attested below that submission, when there is one;
+`claimed_block_height` the block the calendar's answer named, merged or not.
+`verified` says whether that answer passed the blockchain check (`null` when
+there was nothing to check, or with `--no-verify`), `confirmations` the depth
+of the block it named, and `block_header_source` which explorer was asked
+(`null` when none was). `saved_to` is `null` when nothing was written (no
+change, or `--dry-run`).
 
 `verify --json`:
 
@@ -563,6 +615,12 @@ elephstamp upgrade proof.ots --no-default-whitelist -l 'https://ots.internal.exa
 Calendar traffic is hardened as in the library: `https` only, redirects never
 followed, responses capped at 10 kB, timeouts on idle and total duration.
 
+The whitelist decides *who* is asked; what they answer is checked too. As
+described under [`upgrade`](#upgrade--collect-confirmations), every Bitcoin
+attestation a calendar returns is verified against the blockchain before it
+is merged, so a calendar that lies (or has a bug) cannot turn your proof into
+one that fails verification. `--no-verify` disables that check.
+
 ## Automating with cron
 
 `upgrade` exits `2` while a proof is pending and `0` once it is complete, so a
@@ -598,7 +656,9 @@ eval "$(elephstamp completion bash)"
 
 - **No verification against your own node yet.** `verify` relies on public
   block explorers for block headers; asking a node you run is planned for a
-  later release. `info` and `upgrade` themselves never check anything on-chain.
+  later release. `info` never checks anything on-chain; `upgrade` only checks
+  the answers it is about to merge, never the attestations a proof already
+  holds (that is `verify`'s job).
 - **No non-Bitcoin notaries.** Litecoin or Ethereum attestations are preserved
   and listed as unsupported, never interpreted or upgraded.
 - **No pruning or editing of proofs**: the tool only ever adds attestations.

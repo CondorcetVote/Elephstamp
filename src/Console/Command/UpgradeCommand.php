@@ -7,6 +7,7 @@ namespace CondorcetVote\ElephStamp\Console\Command;
 use CondorcetVote\ElephStamp\Console\{ClientFactory, ClientOptions, Formatter};
 use CondorcetVote\ElephStamp\Exception\ElephStampException;
 use CondorcetVote\ElephStamp\Upgrade\{CalendarUpgradeResult, UpgradeOutcome, UpgradeReport};
+use CondorcetVote\ElephStamp\Verify\Verifier;
 use CondorcetVote\ElephStamp\{Receipt, Status};
 use Symfony\Component\Console\Attribute\{Argument, AsCommand, Option};
 use Symfony\Component\Console\Command\Command;
@@ -19,8 +20,17 @@ use Symfony\Component\Console\Style\SymfonyStyle;
     help: <<<'HELP'
         For each <comment>.ots</comment> proof, polls every calendar it is pending on and reports what
         each one answered: <comment>upgraded</comment>, <comment>still pending</comment>, <comment>failed</comment>, <comment>rejected</comment>
-        (the calendar returned a proof for another digest) or <comment>skipped</comment> (its host
-        is not on the whitelist, so it was never contacted).
+        (the calendar returned a proof for another digest, or for a block that does not
+        commit to it), <comment>unconfirmed</comment> (its block is still too shallow), <comment>unverifiable</comment>
+        (the explorer could not answer) or <comment>skipped</comment> (its host is not on the whitelist,
+        so it was never contacted).
+
+        A calendar's answer is untrusted, so every Bitcoin attestation it returns is
+        checked against the blockchain before it is merged, exactly as <comment>verify</comment> does:
+        the block explorer (mempool.space by default, see <comment>--explorer</comment>) is asked for the
+        block's header, the merkle roots must match, and the block must be buried under
+        <comment>--min-confirmations</comment> blocks. An answer that fails the check is not merged and the
+        calendar stays pending. Pass <comment>--no-verify</comment> to merge whatever the calendars return.
 
         A proof that gained new attestations is written back in place (or to
         <comment>--output</comment> for a single proof). Use <comment>--dry-run</comment> to poll without writing.
@@ -41,6 +51,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         'proofs/*.ots',
         'contract.pdf.ots --dry-run',
         'contract.pdf.ots --all',
+        'contract.pdf.ots --explorer blockstream --min-confirmations 3',
+        'contract.pdf.ots --no-verify',
         'contract.pdf.ots -l https://*.internal.example --timeout 5',
     ],
 )]
@@ -56,6 +68,8 @@ final class UpgradeCommand
     /**
      * @param list<string> $receipts
      * @param list<string> $whitelist
+     * @param list<string> $explorer
+     * @param list<string> $explorerUrl
      */
     public function __invoke(
         SymfonyStyle $io,
@@ -72,7 +86,15 @@ final class UpgradeCommand
         array $whitelist = [],
         #[Option(description: 'Drop the built-in whitelist of public calendars; only --whitelist patterns remain', name: 'no-default-whitelist')]
         bool $noDefaultWhitelist = false,
-        #[Option(description: 'Seconds to wait for a calendar before giving up on it')]
+        #[Option(description: 'Merge whatever the calendars answer without checking it against the blockchain first', name: 'no-verify')]
+        bool $noVerify = false,
+        #[Option(description: 'Blocks a block named by a calendar must be buried under before its attestation is merged, itself included', name: 'min-confirmations')]
+        int $minConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS,
+        #[Option(description: 'Block explorer to check the answers against: mempool (default) or blockstream. Repeat to require several to agree', shortcut: 'e', suggestedValues: ['mempool', 'blockstream'])]
+        array $explorer = [],
+        #[Option(description: 'Base URL of another Esplora-compatible explorer, e.g. a self-hosted one (repeatable, https only)', name: 'explorer-url')]
+        array $explorerUrl = [],
+        #[Option(description: 'Seconds to wait for a calendar or explorer before giving up on it')]
         ?float $timeout = null,
         #[Option(description: 'Print machine-readable JSON instead of the report')]
         bool $json = false,
@@ -83,11 +105,19 @@ final class UpgradeCommand
             return Command::FAILURE;
         }
 
+        if ($minConfirmations < 1) {
+            $io->error('--min-confirmations must be at least 1.');
+
+            return Command::FAILURE;
+        }
+
         try {
             $client = $this->clientFactory->create(new ClientOptions(
                 whitelist: $whitelist,
                 useDefaultWhitelist: !$noDefaultWhitelist,
                 timeout: $timeout,
+                explorers: ClientOptions::explorersFromNames($explorer),
+                explorerUrls: $explorerUrl,
             ));
         } catch (ElephStampException $exception) {
             $io->error($exception->getMessage());
@@ -105,7 +135,7 @@ final class UpgradeCommand
             try {
                 $receipt = Receipt::fromPath($path);
                 $wasComplete = $receipt->isComplete();
-                $report = $client->upgradeWithReport($receipt, pollAll: $all);
+                $report = $client->upgradeWithReport($receipt, pollAll: $all, verify: !$noVerify, requiredConfirmations: $minConfirmations);
                 $saved = false;
 
                 if ($report->changed() && !$dryRun) {
@@ -174,6 +204,11 @@ final class UpgradeCommand
             ], $report->results),
         );
 
+        if ($report->blockHeaderSource !== null) {
+            $io->text(\sprintf('<fg=gray>Answers checked against the blockchain through %s before being merged.</>', $report->blockHeaderSource));
+            $io->newLine();
+        }
+
         if ($receipt->isComplete()) {
             $confirmed = \count(array_filter($report->results, static fn(CalendarUpgradeResult $r): bool => $r->blockHeight !== null));
             $detail = \count($report->results) > 1 ? \sprintf(' Confirmed through %d of %d calendars.', $confirmed, \count($report->results)) : '';
@@ -211,7 +246,15 @@ final class UpgradeCommand
         }
 
         if ($report->count(UpgradeOutcome::Rejected) > 0) {
-            $reasons[] = 'A calendar answered with a proof for a different digest; its answer was discarded.';
+            $reasons[] = 'A calendar answered with a proof that does not hold up (another digest, or a block that does not commit to it); its answer was discarded.';
+        }
+
+        if ($report->count(UpgradeOutcome::Unconfirmed) > 0) {
+            $reasons[] = 'A calendar\'s block is still too shallow; its answer will be merged once it reaches --min-confirmations, try again later.';
+        }
+
+        if ($report->count(UpgradeOutcome::Unverifiable) > 0) {
+            $reasons[] = 'A calendar\'s answer could not be checked against the blockchain; try again later, pick another --explorer, or pass --no-verify to merge it unchecked.';
         }
 
         $io->note(['Still pending, nothing new to save.', ...$reasons]);
@@ -221,15 +264,26 @@ final class UpgradeCommand
     {
         return match ($result->outcome) {
             UpgradeOutcome::Upgraded => $result->blockHeight !== null
-                ? \sprintf('<fg=green;options=bold>upgraded</> — Bitcoin block %d', $result->blockHeight)
+                ? \sprintf('<fg=green;options=bold>upgraded</> — Bitcoin block %d%s', $result->blockHeight, self::verifiedSuffix($result))
                 : '<fg=green>upgraded</> — new attestations, not yet on Bitcoin',
             UpgradeOutcome::Unchanged => '<fg=green>unchanged</> — answered with what the proof already holds',
             UpgradeOutcome::Pending => '<fg=yellow>still pending</> — not confirmed yet',
             UpgradeOutcome::Failed => \sprintf('<fg=red>failed</> — %s', $result->error),
             UpgradeOutcome::Rejected => \sprintf('<fg=red>rejected</> — %s', $result->error),
+            UpgradeOutcome::Unconfirmed => \sprintf('<fg=yellow>unconfirmed</> — %s, not merged yet', $result->error),
+            UpgradeOutcome::Unverifiable => \sprintf('<fg=red>unverifiable</> — %s, not merged', $result->error),
             UpgradeOutcome::Skipped => '<fg=magenta>skipped</> — not on the whitelist, not contacted',
             UpgradeOutcome::Confirmed => \sprintf('<fg=green>confirmed</> — already anchored in Bitcoin block %d, not polled', $result->blockHeight),
         };
+    }
+
+    private static function verifiedSuffix(CalendarUpgradeResult $result): string
+    {
+        if ($result->verified() !== true) {
+            return ' <fg=gray>(not checked)</>';
+        }
+
+        return \sprintf(', <fg=green>verified</> (%s)', Formatter::plural($result->confirmations() ?? 0, 'confirmation'));
     }
 
     private static function savedSuffix(bool $saved, bool $dryRun, string $target): string
@@ -271,11 +325,15 @@ final class UpgradeCommand
             'was_already_complete' => $wasComplete,
             'changed' => $report->changed(),
             'saved_to' => $savedTo,
+            'block_header_source' => $report->blockHeaderSource,
             'calendars' => array_map(static fn(CalendarUpgradeResult $r): array => [
                 'url' => $r->calendarUrl,
                 'commitment' => $r->commitmentHex(),
                 'outcome' => strtolower($r->outcome->name),
                 'block_height' => $r->blockHeight,
+                'claimed_block_height' => $r->claimedBlockHeight(),
+                'verified' => $r->verified(),
+                'confirmations' => $r->confirmations(),
                 'error' => $r->error,
             ], $report->results),
         ];

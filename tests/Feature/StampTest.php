@@ -6,6 +6,7 @@ use CondorcetVote\ElephStamp\Attestation\{BitcoinAttestation, PendingAttestation
 use CondorcetVote\ElephStamp\Calendar\{CalendarClient, CalendarResponse, FakeCalendarClient};
 use CondorcetVote\ElephStamp\Exception\{CalendarException, InvalidInputException, StampingException};
 use CondorcetVote\ElephStamp\Random\DeterministicRandomSource;
+use CondorcetVote\ElephStamp\Verify\FakeBlockHeaderSource;
 use CondorcetVote\ElephStamp\{ElephStamp, FileToStamp, Receipt, Status, Timestamp};
 
 it('stamps a file as pending and lists the calendar', function (): void {
@@ -138,9 +139,11 @@ it('tolerates a failing calendar during upgrade and still merges a good one', fu
         calendarUrls: ['https://down.example', 'https://up.example'],
         randomSource: new DeterministicRandomSource,
         upgradeWhitelist: ['https://*.example'],
+        blockHeaderSource: $blocks = new FakeBlockHeaderSource,
     );
 
     $receipt = $client->stamp(FileToStamp::fromContent('resilient'));
+    $blocks->addBlock(700_222, $receipt->detachedTimestampFile()->timestamp->findPending()[0]['msg']);
 
     expect($client->upgrade($receipt))->toBeTrue()
         ->and($receipt->isComplete())->toBeTrue()
@@ -316,3 +319,95 @@ it('saves and reloads a receipt from disk', function (): void {
 
     expect(Receipt::fromPath($path)->toBytes())->toBe($receipt->toBytes());
 });
+
+it('mines the commitments confirmed together into one fake block', function (): void {
+    $client = ElephStamp::fake();
+    $first = $client->stamp(FileToStamp::fromContent('first'));
+    $second = $client->stamp(FileToStamp::fromContent('second'));
+    $third = $client->stamp(FileToStamp::fromContent('third'));
+
+    $client->fakeCalendar()->confirmAll(812_345, new DateTimeImmutable('2024-06-01 12:00:00 UTC'));
+
+    foreach ([$first, $second, $third] as $receipt) {
+        expect($client->upgrade($receipt))->toBeTrue()
+            ->and($receipt->bitcoinBlockHeight())->toBe(812_345)
+            ->and($client->verify($receipt)->verdict())->toBe(CondorcetVote\ElephStamp\Verify\Verdict::Verified)
+            ->and($client->verify($receipt)->attestedAt()?->format('Y-m-d H:i'))->toBe('2024-06-01 12:00');
+    }
+
+    // Three different proofs, one block: they share its merkle root.
+    $roots = array_unique(array_map(static fn(Receipt $r): string => $r->bitcoinAnchors()[0]->merkleRoot ?? '', [$first, $second, $third]));
+
+    expect($roots)->toHaveCount(1)
+        ->and($client->fakeBlockSource()->blockHeader(812_345)->merkleRoot)->toBe(array_values($roots)[0])
+        ->and(Receipt::fromBytes($first->toBytes())->bitcoinBlockHeight())->toBe(812_345);
+});
+
+it('mines later confirmations into the next free fake block', function (): void {
+    $client = ElephStamp::fake();
+    $calendar = $client->fakeCalendar();
+
+    $first = $client->stamp(FileToStamp::fromContent('a'));
+    $calendar->confirmAll();
+    $second = $client->stamp(FileToStamp::fromContent('b'));
+    $calendar->confirmAll();
+    $third = $client->stamp(FileToStamp::fromContent('c'));
+    $calendar->confirm($third, 900_000);
+    $fourth = $client->stamp(FileToStamp::fromContent('d'));
+    $calendar->confirmAll();
+
+    // Confirming again leaves already mined commitments in their block.
+    $calendar->confirm($first, 999_999);
+
+    foreach ([$first, $second, $third, $fourth] as $receipt) {
+        $client->upgrade($receipt);
+    }
+
+    expect($first->bitcoinBlockHeight())->toBe(FakeCalendarClient::DEFAULT_BLOCK_HEIGHT)
+        ->and($second->bitcoinBlockHeight())->toBe(FakeCalendarClient::DEFAULT_BLOCK_HEIGHT + 1)
+        ->and($third->bitcoinBlockHeight())->toBe(900_000)
+        ->and($fourth->bitcoinBlockHeight())->toBe(900_001)
+        ->and($client->fakeBlockSource()->tipHeight())->toBe(900_006);
+});
+
+it('refuses to mine into a fake block already holding other commitments', function (): void {
+    $client = ElephStamp::fake();
+    $client->stamp(FileToStamp::fromContent('a'));
+    $client->fakeCalendar()->confirmAll(800_000);
+    $client->stamp(FileToStamp::fromContent('b'));
+
+    $client->fakeCalendar()->confirmAll(800_000);
+})->throws(InvalidInputException::class, 'already mined');
+
+it('resets the fake chain along with the fake calendar', function (): void {
+    $client = ElephStamp::fake();
+    $client->stamp(FileToStamp::fromContent('a'));
+    $client->fakeCalendar()->confirmAll(800_000);
+
+    $client->fakeCalendar()->reset();
+
+    // The height is free again, and the chain empty.
+    $receipt = $client->stamp(FileToStamp::fromContent('b'));
+    $client->fakeCalendar()->confirmAll(800_000);
+
+    expect($client->upgrade($receipt))->toBeTrue()
+        ->and($client->fakeBlockSource()->blockHeader(800_000)->merkleRoot)->toBe($receipt->bitcoinAnchors()[0]->merkleRoot);
+});
+
+it('wires a fake calendar and a fake chain together', function (): void {
+    $blocks = new FakeBlockHeaderSource;
+    $calendar = new FakeCalendarClient(blocks: $blocks);
+
+    expect($calendar->blocks())->toBe($blocks)
+        ->and(ElephStamp::fake($calendar)->fakeBlockSource())->toBe($blocks)
+        ->and(ElephStamp::fake($calendar, $blocks)->fakeBlockSource())->toBe($blocks)
+        ->and(ElephStamp::fake(blockHeaderSource: $blocks)->fakeCalendar()->blocks())->toBe($blocks);
+
+    $standalone = ElephStamp::fake();
+
+    expect($standalone->fakeCalendar()->blocks())->toBe($standalone->fakeBlockSource());
+});
+
+it('refuses a fake calendar mining into another chain than the one given', function (): void {
+    ElephStamp::fake(new FakeCalendarClient, new FakeBlockHeaderSource);
+})->throws(InvalidInputException::class, 'another block source');

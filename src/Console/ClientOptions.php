@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CondorcetVote\ElephStamp\Console;
 
 use CondorcetVote\ElephStamp\ElephStamp;
+use CondorcetVote\ElephStamp\Exception\InvalidInputException;
 use CondorcetVote\ElephStamp\Verify\Explorer;
 
 /**
@@ -33,6 +34,23 @@ final class ClientOptions
         public readonly array $explorers = [],
         public readonly array $explorerUrls = [],
     ) {}
+
+    /**
+     * Resolve the explorer names given on the command line.
+     *
+     * @param list<string> $names
+     *
+     * @throws InvalidInputException on an unknown name
+     *
+     * @return list<Explorer>
+     */
+    public static function explorersFromNames(array $names): array
+    {
+        return array_map(
+            static fn(string $name): Explorer => Explorer::tryFrom($name) ?? throw new InvalidInputException(\sprintf('Unknown explorer "%s"; known: %s', $name, implode(', ', array_column(Explorer::cases(), 'value')))),
+            $names,
+        );
+    }
 
     /**
      * The calendars a stamp is submitted to.

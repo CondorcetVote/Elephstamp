@@ -201,3 +201,101 @@ it('passes whitelist and timeout options to the client', function (): void {
         ->and($this->factory->lastOptions?->timeout)->toBe(3.0)
         ->and($this->factory->lastOptions?->resolvedWhitelist())->toBe([...ElephStamp::DEFAULT_UPGRADE_WHITELIST, 'https://*.internal.example']);
 });
+
+it('reports a verified answer and the source it was checked against', function (): void {
+    $this->calendar->confirmAll(812_345);
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path]]);
+
+    $this->tester->assertCommandIsSuccessful();
+
+    expect($this->tester->getDisplay())->toContain('verified (6 confirmations)')
+        ->toContain('checked against the blockchain through fake block source');
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--json' => true, '--all' => true]);
+    $document = json_decode($this->tester->getDisplay(), true, flags: \JSON_THROW_ON_ERROR);
+
+    expect($document['block_header_source'])->toBeNull()
+        ->and($document['calendars'][0]['outcome'])->toBe('confirmed');
+});
+
+it('rejects an answer the blockchain does not back, and leaves the proof pending', function (): void {
+    $this->calendar->confirmAll(812_345);
+    $this->factory->blocks->reset();
+    $this->factory->blocks->addBlock(812_345, str_repeat("\xee", 32));
+    $before = file_get_contents($this->path);
+
+    $status = $this->tester->run(['upgrade', 'receipts' => [$this->path]]);
+
+    expect($status)->toBe(UpgradeCommand::STILL_PENDING)
+        ->and($this->tester->getDisplay())->toContain('rejected')
+        ->toContain('merkle root mismatch')
+        ->toContain('does not hold up')
+        ->and(file_get_contents($this->path))->toBe($before);
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--json' => true]);
+    $document = json_decode($this->tester->getDisplay(), true, flags: \JSON_THROW_ON_ERROR);
+
+    expect($document['status'])->toBe('pending')
+        ->and($document['block_header_source'])->toBe('fake block source')
+        ->and($document['calendars'][0]['outcome'])->toBe('rejected')
+        ->and($document['calendars'][0]['verified'])->toBeFalse()
+        ->and($document['calendars'][0]['block_height'])->toBeNull()
+        ->and($document['calendars'][0]['claimed_block_height'])->toBe(812_345)
+        ->and($document['calendars'][0]['confirmations'])->toBe(6)
+        ->and($document['calendars'][0]['error'])->toContain('merkle root mismatch');
+});
+
+it('waits for a shallow block unless --min-confirmations allows it', function (): void {
+    $this->calendar->confirmAll(812_345);
+    $this->factory->blocks->setTipHeight(812_346);
+
+    $status = $this->tester->run(['upgrade', 'receipts' => [$this->path]]);
+
+    expect($status)->toBe(UpgradeCommand::STILL_PENDING)
+        ->and($this->tester->getDisplay())->toContain('unconfirmed')
+        ->toContain('2 of the 6 confirmations')
+        ->toContain('not merged yet')
+        ->toContain('too shallow');
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--min-confirmations' => '2']);
+
+    $this->tester->assertCommandIsSuccessful();
+
+    expect($this->tester->getDisplay())->toContain('verified (2 confirmations)');
+});
+
+it('reports an answer it could not check and suggests --no-verify', function (): void {
+    $this->calendar->confirmAll(812_345);
+    $this->factory->blocks->reset();
+
+    $status = $this->tester->run(['upgrade', 'receipts' => [$this->path]]);
+
+    expect($status)->toBe(UpgradeCommand::STILL_PENDING)
+        ->and($this->tester->getDisplay())->toContain('unverifiable')
+        ->toContain('no block registered')
+        ->toContain('--no-verify');
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--no-verify' => true]);
+
+    $this->tester->assertCommandIsSuccessful();
+
+    expect($this->tester->getDisplay())->toContain('Bitcoin block 812345 (not checked)')
+        ->not->toContain('checked against the blockchain')
+        ->and(Receipt::fromPath($this->path)->isComplete())->toBeTrue();
+});
+
+it('passes explorer choices to the client and validates --min-confirmations', function (): void {
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--explorer' => ['blockstream'], '--explorer-url' => ['https://esplora.internal/api']]);
+
+    expect($this->factory->lastOptions?->explorers)->toBe([CondorcetVote\ElephStamp\Verify\Explorer::Blockstream])
+        ->and($this->factory->lastOptions?->explorerUrls)->toBe(['https://esplora.internal/api']);
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--explorer' => ['nope']]);
+    $this->tester->assertCommandFailed();
+    expect($this->tester->getDisplay())->toContain('Unknown explorer "nope"');
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--min-confirmations' => '0']);
+    $this->tester->assertCommandFailed();
+    expect($this->tester->getDisplay())->toContain('--min-confirmations must be at least 1');
+});

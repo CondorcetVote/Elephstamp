@@ -53,6 +53,9 @@ it('fails on a file that is not the one the proof commits to', function (): void
 it('fails when the block does not commit to the proof', function (): void {
     $client = ElephStamp::fake();
     $receipt = completedFakeReceipt($client, 'forged', 800_000);
+
+    // Rewrite the chain after the fact: block 800000 no longer holds the root the proof leads to.
+    $client->fakeBlockSource()->reset();
     $client->fakeBlockSource()->addBlock(800_000, str_repeat("\xee", 32));
 
     $report = $client->verify($receipt);
@@ -96,6 +99,9 @@ it('is pending without any Bitcoin attestation', function (): void {
 it('is inconclusive when the source knows nothing, and reports why', function (): void {
     $client = ElephStamp::fake();
     $receipt = completedFakeReceipt($client, 'unknown block', 800_000);
+
+    // A source that has never heard of the block the receipt names.
+    $client->fakeBlockSource()->reset();
     $client->fakeBlockSource()->setTipHeight(900_000);
 
     $report = $client->verify($receipt);
@@ -154,3 +160,68 @@ it('refuses to register two different merkle roots for one fake block', function
 it('only exposes the fake block source in fake mode', function (): void {
     new ElephStamp()->fakeBlockSource();
 })->throws(InvalidInputException::class, 'fake block source');
+
+/**
+ * Graft a second Bitcoin attestation, in $height, onto a receipt's pending node.
+ */
+function graftAttestation(Receipt $receipt, int $height): void
+{
+    $node = $receipt->detachedTimestampFile()->timestamp->findPending()[0]['node'];
+    $branch = new CondorcetVote\ElephStamp\Timestamp($node->msg);
+    $branch->addOp(new CondorcetVote\ElephStamp\Operation\Sha256)->addAttestation(new CondorcetVote\ElephStamp\Attestation\BitcoinAttestation($height));
+    $node->merge($branch);
+}
+
+it('stays verified when another attestation does not match its block, and lists it', function (): void {
+    $client = ElephStamp::fake();
+    $receipt = completedFakeReceipt($client, 'one good one bad', 800_000);
+    graftAttestation($receipt, 800_001);
+
+    // Block 800001 exists but holds something else entirely.
+    $client->fakeBlockSource()->addBlock(800_001, str_repeat("\xee", 32));
+    $client->fakeBlockSource()->setTipHeight(800_010);
+
+    $report = $client->verify($receipt);
+
+    expect($report->verdict())->toBe(Verdict::Verified)
+        ->and($report->isVerified())->toBeTrue()
+        ->and($report->count(AnchorOutcome::Verified))->toBe(1)
+        ->and($report->mismatches())->toHaveCount(1)
+        ->and($report->mismatches()[0]->blockHeight())->toBe(800_001)
+        ->and($report->attestingAnchor()?->blockHeight())->toBe(800_000);
+});
+
+it('fails on a mismatch when nothing else vouches for the proof', function (): void {
+    $client = ElephStamp::fake();
+    $receipt = completedFakeReceipt($client, 'bad and fresh', 800_000);
+    graftAttestation($receipt, 800_001);
+
+    $blocks = $client->fakeBlockSource();
+    $blocks->reset();
+    $blocks->addBlock(800_000, str_repeat("\xee", 32));
+    $blocks->addBlock(800_001, $receipt->bitcoinAnchors()[1]->merkleRoot ?? '');
+    $blocks->setTipHeight(800_002);
+
+    // One mismatch, one merely awaiting confirmations: not proven, so failed.
+    $report = $client->verify($receipt);
+
+    expect($report->count(AnchorOutcome::AwaitingConfirmations))->toBe(1)
+        ->and($report->mismatches())->toHaveCount(1)
+        ->and($report->verdict())->toBe(Verdict::Failed);
+
+    // Once the matching block is deep enough, the mismatch no longer matters.
+    $blocks->setTipHeight(800_010);
+
+    expect($client->verify($receipt)->verdict())->toBe(Verdict::Verified);
+});
+
+it('checks anchors in a batch through the verifier', function (): void {
+    $client = ElephStamp::fake();
+    $receipt = completedFakeReceipt($client, 'batch', 800_000);
+
+    $verifier = new Verifier($client->fakeBlockSource());
+
+    expect($verifier->checkAnchors([]))->toBe([])
+        ->and($verifier->checkAnchors($receipt->bitcoinAnchors()))->toHaveCount(1)
+        ->and($verifier->checkAnchors($receipt->bitcoinAnchors())[0]->outcome)->toBe(AnchorOutcome::Verified);
+});
