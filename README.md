@@ -24,6 +24,7 @@ in what it does with them.
 | **[LIBRARY.md](LIBRARY.md)** | The PHP API: stamping, upgrading, verifying, reading receipts, fake mode for tests, configuration, security. |
 | **[CLI.md](CLI.md)** | The `elephstamp` command: `stamp`, `upgrade`, `verify`, `info`, `tree`, `calendars`, JSON output, exit codes. |
 | [docs/readme.md](docs/readme.md) | Generated class-by-class API reference. |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each release. |
 
 ## Scope
 

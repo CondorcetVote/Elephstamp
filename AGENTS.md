@@ -37,7 +37,7 @@ round-trip tests against real fixtures).
 
 ## Documentation
 
-Hand-written documentation is split in three files at the repository root.
+Hand-written documentation is split in four files at the repository root.
 **Always keep them up to date**, in the same change set as the code:
 
 - `README.md` — short entry point: pitch, scope, requirements, installation,
@@ -49,6 +49,13 @@ Hand-written documentation is split in three files at the repository root.
 - `CLI.md` — the `elephstamp` command guide. Every new command, option, output
   change, JSON field or exit code MUST be reflected here, including the
   sample outputs when they no longer match.
+- `CHANGELOG.md` — the release history, newest first, in the Keep a Changelog
+  style. Anything a consumer of the library or the CLI would notice goes under
+  the unreleased version at the top (`### Added` / `### Changed` / `### Fixed`
+  / `### Removed`), in the same change set as the code. Written for users, not
+  for maintainers: skip lint, internal refactors and test-only changes. Never
+  date or renumber a version, and never edit an already released section — the
+  maintainer cuts releases.
 
 Treat these files as part of the API: out-of-date docs are a bug. Public
 examples must actually run as written — when in doubt, copy them into a
@@ -60,7 +67,7 @@ scratch script and verify before committing.
 - Do **not** put project instructions inside `.github/` — they belong in this file.
 - The generated API docs and all git commits are handled by the maintainer. Do
   **not** run `composer document`, do **not** commit, tag, or push. Keep the
-  three documentation files current, but leave `docs/` and version control to
+  four documentation files current, but leave `docs/` and version control to
   the maintainer.
 
 ## Scope of this library
