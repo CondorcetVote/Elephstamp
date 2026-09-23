@@ -69,6 +69,27 @@ it('accepts a digest instead of the file', function (): void {
     $this->tester->run(['verify', 'receipts' => [$this->path], '--digest' => 'zz']);
 
     $this->tester->assertCommandFailed();
+    expect($this->tester->getDisplay())->toContain('64-character hex sha256 digest');
+});
+
+it('expects the digest in the algorithm the proof uses', function (): void {
+    $client = $this->factory->create(new CondorcetVote\ElephStamp\Console\ClientOptions(hashOperation: new CondorcetVote\ElephStamp\Operation\Sha1));
+    $receipt = $client->stamp(FileToStamp::fromPath($this->dir . '/doc.txt'));
+    $this->factory->calendar->confirm($receipt);
+    $client->upgrade($receipt);
+    $path = $this->dir . '/sha1.ots';
+    $receipt->saveToPath($path);
+    $this->factory->blocks->anchor($receipt);
+
+    $this->tester->run(['verify', 'receipts' => [$path], '--digest' => hash('sha1', 'the document')]);
+
+    $this->tester->assertCommandIsSuccessful();
+    expect(unwrapped($this->tester->getDisplay()))->toContain(unwrapped('digest ' . hash('sha1', 'the document') . ' existed before'));
+
+    $this->tester->run(['verify', 'receipts' => [$path], '--digest' => hash('sha256', 'the document')]);
+
+    $this->tester->assertCommandFailed();
+    expect($this->tester->getDisplay())->toContain('40-character hex sha1 digest');
 });
 
 it('fails when the block does not commit to the proof', function (): void {

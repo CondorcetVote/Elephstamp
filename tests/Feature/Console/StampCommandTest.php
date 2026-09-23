@@ -96,7 +96,59 @@ it('rejects a malformed digest', function (): void {
 
     $tester->assertCommandFailed();
 
-    expect($tester->getDisplay())->toContain('64-character hex SHA-256 digest');
+    expect($tester->getDisplay())->toContain('64-character hex sha256 digest');
+});
+
+it('commits with another hash algorithm', function (): void {
+    $factory = new FakeClientFactory;
+    $tester = stampCli($factory);
+
+    $tester->run(['stamp', 'files' => [$this->dir . '/a.txt'], '--hash' => 'SHA1']);
+
+    $tester->assertCommandIsSuccessful();
+
+    $receipt = Receipt::fromPath($this->dir . '/a.txt.ots');
+
+    expect($receipt->hashOperation())->toBeInstanceOf(CondorcetVote\ElephStamp\Operation\Sha1::class)
+        ->and($receipt->fileDigestHex())->toBe(hash('sha1', 'file A'))
+        ->and($factory->lastOptions?->hashOperation)->toBeInstanceOf(CondorcetVote\ElephStamp\Operation\Sha1::class)
+        ->and($tester->getDisplay())->toContain('sha1 digest');
+});
+
+it('stamps a raw digest in the --hash algorithm', function (): void {
+    $tester = stampCli();
+    $digest = hash('ripemd160', 'elsewhere');
+
+    $tester->run(['stamp', '--digest' => $digest, '--hash' => 'ripemd160', '--output' => $this->dir . '/digest.ots']);
+
+    $tester->assertCommandIsSuccessful();
+
+    $receipt = Receipt::fromPath($this->dir . '/digest.ots');
+
+    expect($receipt->fileDigestHex())->toBe($digest)
+        ->and($receipt->hashOperation()->describe())->toBe('ripemd160');
+});
+
+it('checks the digest length against the --hash algorithm', function (): void {
+    $tester = stampCli();
+
+    $tester->run(['stamp', '--digest' => hash('sha256', 'x'), '--hash' => 'sha1']);
+
+    $tester->assertCommandFailed();
+
+    expect($tester->getDisplay())->toContain('40-character hex sha1 digest')
+        ->and(glob($this->dir . '/*.ots'))->toBe([]);
+});
+
+it('rejects an unknown hash algorithm', function (): void {
+    $tester = stampCli();
+
+    $tester->run(['stamp', 'files' => [$this->dir . '/a.txt'], '--hash' => 'md5']);
+
+    $tester->assertCommandFailed();
+
+    expect(unwrapped($tester->getDisplay()))->toContain(unwrapped('Unknown hash operation "md5"; known: sha256, sha1, ripemd160'))
+        ->and(is_file($this->dir . '/a.txt.ots'))->toBeFalse();
 });
 
 it('refuses both files and a digest, and nothing at all', function (): void {

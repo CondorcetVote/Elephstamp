@@ -101,6 +101,19 @@ it('enforces hexlify length limits', function (): void {
         ->and(fn() => (new Hexlify)->apply(''))->toThrow(SerializationException::class);
 });
 
+it('resolves hash operations by name', function (): void {
+    expect(HashOperation::fromName('sha256'))->toBeInstanceOf(Sha256::class)
+        ->and(HashOperation::fromName('SHA1'))->toBeInstanceOf(Sha1::class)
+        ->and(HashOperation::fromName('ripemd160'))->toBeInstanceOf(Ripemd160::class)
+        ->and(HashOperation::names())->toBe(['sha256', 'sha1', 'ripemd160'])
+        ->and(fn() => HashOperation::fromName('md5'))->toThrow(InvalidInputException::class, 'Unknown hash operation "md5"; known: sha256, sha1, ripemd160')
+        ->and(fn() => HashOperation::fromName('keccak256'))->toThrow(InvalidInputException::class);
+
+    foreach (HashOperation::names() as $name) {
+        expect(HashOperation::fromName($name)->describe())->toBe($name);
+    }
+});
+
 it('orders operations by tag', function (): void {
     // SHA-1 (0x02) sorts before RIPEMD-160 (0x03).
     expect((new Sha1)->comparisonKey() < (new Ripemd160)->comparisonKey())->toBeTrue();

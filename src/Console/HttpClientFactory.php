@@ -23,6 +23,7 @@ final class HttpClientFactory implements ClientFactory
             calendarClient: $calendarClient,
             calendarUrls: $options->resolvedCalendarUrls(),
             requiredCalendars: $options->requiredCalendars,
+            hashOperation: $options->hashOperation,
             upgradeWhitelist: $options->resolvedWhitelist(),
             blockHeaderSource: self::blockHeaderSource($options),
         );

@@ -74,6 +74,7 @@ elephstamp stamp contract.pdf                 # writes contract.pdf.ots
 elephstamp stamp a.pdf b.pdf c.pdf            # one calendar submission, three proofs
 elephstamp stamp contract.pdf -o proofs/contract.ots
 elephstamp stamp --digest 03ba204e…6ab340 -o hello.ots
+elephstamp stamp --hash sha1 --digest aaf4c61d…a9434d -o hello.ots
 elephstamp stamp contract.pdf -c https://ots.internal.example -m 1
 ```
 
@@ -83,7 +84,8 @@ to the calendars and writes one proof per file, next to it as `<file>.ots`.
 | Option | Effect |
 | --- | --- |
 | `-o, --output=PATH` | Write the proof here instead of `<file>.ots`. Single file or digest only. |
-| `--digest=HEX` | Timestamp a 64-character hex SHA-256 digest you already computed, instead of a file. Defaults to writing `<hex>.ots`. |
+| `--digest=HEX` | Timestamp a hex digest you already computed, instead of a file: 64 characters of SHA-256, or the length of the `--hash` algorithm. Defaults to writing `<hex>.ots`. |
+| `--hash=NAME` | Algorithm the proof commits to the file with: `sha256` (the default, and the only one the reference client produces), `sha1` or `ripemd160`. Applies to files and to `--digest`; never guessed from a digest's length. |
 | `--no-nonce` | Commit to the plain file hash. The calendars, and the sibling proofs of a batch, then learn the real digest. |
 | `-c, --calendar=URL` | Calendar to submit to. Repeatable; replaces the default list. Must be `https`. |
 | `-m, --required=N` | How many calendars must accept the stamp (the "m" of m-of-n). Default `2`, or `1` with a single calendar. |
@@ -322,7 +324,7 @@ say) make the attestation `unavailable` with the reason, exit `2`.
 | Option | Effect |
 | --- | --- |
 | `--file=PATH` | The original file the proof should be for. Found automatically as `<proof without .ots>` when present. Single proof only. |
-| `--digest=HEX` | Its SHA-256 digest, when you do not have the file. Single proof only. |
+| `--digest=HEX` | Its digest, when you do not have the file, in the algorithm the proof declares (`sha256` unless it was stamped with `--hash`; `info` shows it as *File hash*). Single proof only. |
 | `-e, --explorer=NAME` | Which explorer to ask: `mempool` (mempool.space, the default) or `blockstream` (blockstream.info). Repeatable: all named explorers must agree. |
 | `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
 | `--node=URL` | JSON-RPC URL of your own Bitcoin node, e.g. `http://127.0.0.1:8332`. Alone it replaces the explorer; with `--explorer`, all must agree. Plain `http` for local and private hosts only. |

@@ -6,6 +6,7 @@ namespace CondorcetVote\ElephStamp\Console;
 
 use CondorcetVote\ElephStamp\ElephStamp;
 use CondorcetVote\ElephStamp\Exception\InvalidInputException;
+use CondorcetVote\ElephStamp\Operation\HashOperation;
 use CondorcetVote\ElephStamp\Verify\Explorer;
 use SensitiveParameter;
 
@@ -29,6 +30,7 @@ final class ClientOptions
      * @param string|null    $nodeUser          RPC user for $node, with $nodePassword
      * @param string|null    $nodePassword      RPC password for $node, with $nodeUser
      * @param string|null    $nodeCookieFile    Bitcoin Core `.cookie` file holding the RPC credentials, instead of a user and password
+     * @param HashOperation|null $hashOperation the hash a stamp commits to a file with; null for the library default, SHA-256
      */
     public function __construct(
         public readonly array $calendarUrls = [],
@@ -44,6 +46,7 @@ final class ClientOptions
         #[SensitiveParameter]
         public readonly ?string $nodePassword = null,
         public readonly ?string $nodeCookieFile = null,
+        public readonly ?HashOperation $hashOperation = null,
     ) {}
 
     /**

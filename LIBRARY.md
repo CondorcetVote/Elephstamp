@@ -10,6 +10,7 @@ This document covers the PHP API. For the `elephstamp` command-line tool, see
   - [Checking answers before merging them](#checking-answers-before-merging-them)
   - [Collecting every calendar's attestation](#collecting-every-calendars-attestation)
 - [Describing what to stamp](#describing-what-to-stamp)
+  - [Hash algorithm](#hash-algorithm)
 - [Reading a receipt](#reading-a-receipt)
   - [Saving](#saving)
   - [Locating the Bitcoin transaction](#locating-the-bitcoin-transaction)
@@ -196,11 +197,43 @@ use CondorcetVote\ElephStamp\FileToStamp;
 FileToStamp::fromPath('invoice.pdf');                       // a file on disk
 FileToStamp::fromSplFileObject(new SplFileObject('a.bin')); // an open handle
 FileToStamp::fromContent('some in-memory string');          // raw bytes
-FileToStamp::fromDigest($sha256);                           // a digest you already computed
+FileToStamp::fromDigest(hex2bin($hex));                      // a digest you already computed
 ```
 
-`fromDigest()` uses the digest verbatim; its length must match the client's
-hash operation (SHA-256 by default).
+`fromDigest()` takes the **raw digest bytes**, not their hex spelling, and uses
+them verbatim: nothing is hashed again. Their length must match the client's
+hash operation (SHA-256 by default, see [Hash algorithm](#hash-algorithm)),
+which is checked when the client stamps or verifies.
+
+### Hash algorithm
+
+The `.ots` format names the algorithm a proof commits to a file with. The
+client hashes with **SHA-256**, like the reference client; the format also
+supports SHA-1 and RIPEMD-160, which the reference tooling reads and verifies
+as well. Choose one with the `hashOperation` constructor argument. It applies
+to every source, `fromDigest()` included, and is written into the proof:
+
+```php
+use CondorcetVote\ElephStamp\ElephStamp;
+use CondorcetVote\ElephStamp\Operation\{HashOperation, Sha1};
+
+$client = new ElephStamp(hashOperation: new Sha1);
+// or, from a name given by your users: sha256, sha1 or ripemd160
+$client = new ElephStamp(hashOperation: HashOperation::fromName('sha1'));
+
+$receipt = $client->stamp(FileToStamp::fromDigest(sha1('report.pdf content', binary: true)));
+$receipt->hashOperation()->describe();   // "sha1"
+```
+
+`HashOperation::names()` lists the accepted names; `fromName()` throws an
+`InvalidInputException` for anything else, Keccak-256 included (PHP has no
+implementation of it). Reading, upgrading and verifying a proof never need
+this setting: a `Receipt` carries its own algorithm, `hashOperation()`.
+
+The privacy nonce is always mixed in with SHA-256, whatever the file hash, so
+the calendars receive a 32-byte commitment either way. Without a nonce, a
+single SHA-1 or RIPEMD-160 commitment reaches them as its 20 bytes, which the
+public calendars accept.
 
 ### Privacy nonce
 
@@ -363,7 +396,7 @@ $client = new ElephStamp();
 $report = $client->verify(
     Receipt::fromPath('contract.pdf.ots'),
     FileToStamp::fromPath('contract.pdf'),   // optional: also check it is *this* file's proof
-);
+);                                           // or FileToStamp::fromDigest(hex2bin($hex)), in the proof's algorithm
 
 switch ($report->verdict()) {
     case Verdict::Verified:
@@ -597,6 +630,13 @@ Calendar URLs must be unique and use **https** (a plaintext connection would
 let a network attacker inject forged responses); the same goes for whitelist
 patterns. When `requiredCalendars` is omitted it defaults to **2** — like the
 reference client — or to 1 when a single calendar is configured.
+
+The other constructor arguments each have their own section: `hashOperation`
+([Hash algorithm](#hash-algorithm)), `upgradeWhitelist`
+([Upgrade whitelist](#upgrade-whitelist-security)), `blockHeaderSource`
+([Choosing where block headers come from](#choosing-where-block-headers-come-from)),
+`calendarClient` ([Customising the HTTP client](#customising-the-http-client))
+and `randomSource` (the nonce generator, deterministic in [fake mode](#testing-fake-mode)).
 
 ### Upgrade whitelist (security)
 

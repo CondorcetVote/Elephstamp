@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace CondorcetVote\ElephStamp\Console\Command;
 
-use CondorcetVote\ElephStamp\Console\{ClientFactory, ClientOptions, Formatter};
-use CondorcetVote\ElephStamp\Exception\{ElephStampException, InvalidInputException};
+use CondorcetVote\ElephStamp\Console\{ClientFactory, ClientOptions, Formatter, HexDigest};
+use CondorcetVote\ElephStamp\Exception\ElephStampException;
+use CondorcetVote\ElephStamp\Operation\HashOperation;
 use CondorcetVote\ElephStamp\Verify\{AnchorOutcome, AnchorVerification, VerificationReport, Verdict, Verifier};
 use CondorcetVote\ElephStamp\{FileToStamp, Receipt};
 use Symfony\Component\Console\Attribute\{Argument, AsCommand, Option};
@@ -71,7 +72,7 @@ final class VerifyCommand
         array $receipts,
         #[Option(description: 'Original file to check the proof against (single proof only)')]
         ?string $file = null,
-        #[Option(description: 'Hex SHA-256 digest of the original, instead of the file (single proof only)')]
+        #[Option(description: 'Hex digest of the original, instead of the file, in the algorithm the proof uses (single proof only)')]
         ?string $digest = null,
         #[Option(description: 'Block explorer to ask: mempool (default) or blockstream. Repeat to require several to agree', shortcut: 'e', suggestedValues: ['mempool', 'blockstream'])]
         array $explorer = [],
@@ -140,7 +141,7 @@ final class VerifyCommand
         foreach ($receipts as $path) {
             try {
                 $receipt = Receipt::fromPath($path);
-                [$original, $subject] = self::subject($path, $file, $digest);
+                [$original, $subject] = self::subject($path, $receipt->hashOperation(), $file, $digest);
                 $report = $client->verify($receipt, $subject, $minConfirmations);
             } catch (ElephStampException $exception) {
                 $exitCode = Command::FAILURE;
@@ -174,19 +175,17 @@ final class VerifyCommand
      * What the proof is checked against: an explicit file or digest, or the
      * file sitting next to the proof.
      *
+     * The proof itself names its hash algorithm, so a digest is expected in
+     * that algorithm rather than always in SHA-256.
+     *
      * @return array{?string, ?FileToStamp} a label for the subject, and the subject
      */
-    private static function subject(string $receiptPath, ?string $file, ?string $digest): array
+    private static function subject(string $receiptPath, HashOperation $hashOperation, ?string $file, ?string $digest): array
     {
         if ($digest !== null) {
-            $hex = strtolower($digest);
-            $raw = ctype_xdigit($hex) && \strlen($hex) === 64 ? hex2bin($hex) : false;
+            $raw = HexDigest::parse($digest, $hashOperation, '--digest');
 
-            if ($raw === false) {
-                throw new InvalidInputException('--digest must be a 64-character hex SHA-256 digest');
-            }
-
-            return ['digest ' . $hex, FileToStamp::fromDigest($raw)];
+            return ['digest ' . bin2hex($raw), FileToStamp::fromDigest($raw)];
         }
 
         if ($file === null && str_ends_with($receiptPath, '.ots') && is_file(substr($receiptPath, 0, -4))) {

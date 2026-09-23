@@ -4,6 +4,13 @@
 
 ### Added
 
+- `elephstamp stamp --hash=sha256|sha1|ripemd160` chooses the algorithm a
+  proof commits to the file with, for files as well as for `--digest`, whose
+  expected length follows. The default stays SHA-256; the algorithm is never
+  guessed from a digest's length.
+- `HashOperation::fromName()` and `HashOperation::names()` resolve a hash
+  operation from its name (`sha256`, `sha1`, `ripemd160`), e.g. to feed the
+  `hashOperation` constructor argument from user input.
 - `CalendarWhitelist::resolve()` returns the normalized URL to contact for an
   allowed calendar URI, or `null` when it is not allowed.
 
@@ -28,6 +35,13 @@
   backslash, a non-ASCII host) are skipped, and so are patterns: they now
   throw an `InvalidInputException`. An explicit `:443` is now treated as no
   port.
+
+### Fixed
+
+- `elephstamp verify --digest` now expects the digest in the algorithm the
+  proof declares, instead of always a SHA-256 one: a SHA-1 or RIPEMD-160 proof
+  can be checked against its 40-character digest. The error message names the
+  expected length and algorithm.
 
 ## [1.3.0] — 2026-09-23
 

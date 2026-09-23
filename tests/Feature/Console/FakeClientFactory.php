@@ -39,6 +39,7 @@ final class FakeClientFactory implements ClientFactory
         return new ElephStamp(
             calendarClient: $this->calendar,
             calendarUrls: [$this->calendarUrl],
+            hashOperation: $options->hashOperation,
             randomSource: new DeterministicRandomSource,
             upgradeWhitelist: $options->resolvedWhitelist(),
             blockHeaderSource: $this->blocks,
