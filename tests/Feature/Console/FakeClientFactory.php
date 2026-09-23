@@ -34,15 +34,13 @@ final class FakeClientFactory implements ClientFactory
     {
         $this->lastOptions = $options;
 
-        // The fake calendar stands in for the default whitelist, so the
-        // --whitelist / --no-default-whitelist options keep their meaning.
-        $whitelist = $options->useDefaultWhitelist ? [$this->calendarUrl, ...$options->whitelist] : $options->whitelist;
-
+        // The calendar this factory stamps with is always upgradable, as in
+        // production; --no-default-whitelist only drops the public operators.
         return new ElephStamp(
             calendarClient: $this->calendar,
             calendarUrls: [$this->calendarUrl],
             randomSource: new DeterministicRandomSource,
-            upgradeWhitelist: $whitelist === [] ? ['https://nothing.allowed.example'] : $whitelist,
+            upgradeWhitelist: $options->resolvedWhitelist(),
             blockHeaderSource: $this->blocks,
         );
     }

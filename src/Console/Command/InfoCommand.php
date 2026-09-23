@@ -71,7 +71,8 @@ final class InfoCommand
         $options = new ClientOptions(whitelist: $whitelist, useDefaultWhitelist: !$noDefaultWhitelist);
 
         try {
-            $inspector = new ProofInspector(new CalendarWhitelist($options->resolvedWhitelist()));
+            // Same rule as ElephStamp: the calendars stamps go to are always upgradable.
+            $inspector = new ProofInspector(new CalendarWhitelist([...$options->resolvedWhitelist(), ...$options->resolvedCalendarUrls()]));
         } catch (ElephStampException $exception) {
             $io->error($exception->getMessage());
 

@@ -71,7 +71,16 @@ it('reports one outcome per calendar in proof order', function (): void {
     // The honest answer attests the commitment itself in block 700000.
     $blocks->addBlock(700_000, $receipt->detachedTimestampFile()->timestamp->findPending()[0]['msg']);
 
-    $report = $client->upgradeWithReport($receipt);
+    // Upgrading from a client that stamps elsewhere: the calendars a client
+    // stamps with are always allowed, which would hide the skipped one.
+    $upgrader = new ElephStamp(
+        calendarClient: scriptedCalendar(),
+        calendarUrls: ['https://good.example'],
+        upgradeWhitelist: ['https://*.example'],
+        blockHeaderSource: $blocks,
+    );
+
+    $report = $upgrader->upgradeWithReport($receipt);
 
     $byUrl = [];
 

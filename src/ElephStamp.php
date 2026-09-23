@@ -79,7 +79,7 @@ final class ElephStamp
      * @param int|null          $requiredCalendars minimum number of calendars that must accept a stamp (the "m" of
      *                                             m-of-n); defaults to 2 — like the reference client — or to 1 when
      *                                             a single calendar is configured
-     * @param list<string>|null $upgradeWhitelist   host patterns an upgrade may contact (defaults to {@see DEFAULT_UPGRADE_WHITELIST}); pass your own when using private calendars
+     * @param list<string>|null $upgradeWhitelist   host patterns an upgrade may contact (defaults to {@see DEFAULT_UPGRADE_WHITELIST}); the $calendarUrls are always allowed on top of them
      * @param BlockHeaderSource|null $blockHeaderSource where {@see verify()} gets block headers; defaults to the {@see Explorer::DEFAULT} explorer
      */
     public function __construct(
@@ -96,7 +96,6 @@ final class ElephStamp
         $this->calendarUrls = $calendarUrls ?? self::DEFAULT_CALENDAR_URLS;
         $this->hashOperation = $hashOperation ?? new Sha256;
         $this->randomSource = $randomSource ?? new CryptoRandomSource;
-        $this->upgradeWhitelist = new CalendarWhitelist($upgradeWhitelist ?? self::DEFAULT_UPGRADE_WHITELIST);
         $this->requiredCalendars = $requiredCalendars ?? min(2, \count($this->calendarUrls));
 
         if (empty($this->calendarUrls)) {
@@ -124,6 +123,10 @@ final class ElephStamp
                 $this->requiredCalendars,
             ));
         }
+
+        // The calendars we submit to are trusted by definition, so a private
+        // calendar does not have to be declared a second time to be upgradable.
+        $this->upgradeWhitelist = new CalendarWhitelist([...($upgradeWhitelist ?? self::DEFAULT_UPGRADE_WHITELIST), ...$this->calendarUrls]);
     }
 
     /**
@@ -152,7 +155,7 @@ final class ElephStamp
             calendarClient: $calendar,
             calendarUrls: [self::FAKE_CALENDAR_URL],
             randomSource: new DeterministicRandomSource,
-            upgradeWhitelist: [self::FAKE_CALENDAR_URL],
+            upgradeWhitelist: [],
             blockHeaderSource: $calendar->blocks(),
         );
     }

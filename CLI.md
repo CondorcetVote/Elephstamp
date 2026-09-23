@@ -649,6 +649,8 @@ patterns:
 elephstamp upgrade proof.ots --no-default-whitelist -l 'https://ots.internal.example'
 ```
 
+The calendars the tool stamps with are always allowed too, as in the library.
+
 Calendar traffic is hardened as in the library: `https` only, redirects never
 followed, responses capped at 10 kB, timeouts on idle and total duration.
 

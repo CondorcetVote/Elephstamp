@@ -605,12 +605,24 @@ may come from an untrusted source, `upgrade()` only contacts hosts on an
 allowlist — otherwise a hostile proof could point the process at arbitrary hosts
 (an SSRF risk). The default covers the known public operators
 (`*.calendar.opentimestamps.org`, `*.calendar.eternitywall.com`,
-`*.calendar.catallaxy.com`). Override it when you use private calendars:
+`*.calendar.catallaxy.com`).
+
+The calendars in `calendarUrls` are always allowed on top of the whitelist:
+you already trust them with your stamps, so a private calendar is upgradable
+without being declared twice:
+
+```php
+$client = new ElephStamp(calendarUrls: ['https://ots.internal.example']);
+```
+
+Pass `upgradeWhitelist` to replace the public-operator patterns, for instance
+to upgrade proofs stamped through other calendars you trust, or `[]` to allow
+only your own calendars:
 
 ```php
 $client = new ElephStamp(
     calendarUrls: ['https://ots.internal.example'],
-    upgradeWhitelist: ['https://*.internal.example'],
+    upgradeWhitelist: ['https://*.partner.example'],
 );
 ```
 

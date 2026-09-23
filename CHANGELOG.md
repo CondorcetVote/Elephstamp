@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- The calendars a client stamps with (`calendarUrls`) are now always allowed
+  to be contacted by `upgrade()`, on top of the upgrade whitelist. A private
+  calendar no longer has to be listed again in `upgradeWhitelist`; passing
+  `upgradeWhitelist: []` now means "only my own calendars".
+
 ## [1.3.0] — 2026-09-23
 
 ### Added

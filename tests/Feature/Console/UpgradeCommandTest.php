@@ -120,19 +120,31 @@ it('keeps polling a complete proof with --all and reports confirmed submissions'
 });
 
 it('skips a calendar outside the whitelist and says why', function (): void {
+    $stranger = new FakeClientFactory($this->calendar, 'https://stranger.example');
+    $stranger->create(new CondorcetVote\ElephStamp\Console\ClientOptions)->stamp(FileToStamp::fromContent('elsewhere'))->saveToPath($this->path);
     $this->calendar->confirmAll();
 
-    $status = $this->tester->run(['upgrade', 'receipts' => [$this->path], '--no-default-whitelist' => true]);
+    $status = $this->tester->run(['upgrade', 'receipts' => [$this->path]]);
 
     expect($status)->toBe(UpgradeCommand::STILL_PENDING)
         ->and($this->tester->getDisplay())->toContain('skipped')
         ->toContain('not on the whitelist')
         ->and(Receipt::fromPath($this->path)->isPending())->toBeTrue();
 
-    // Re-allowing the calendar explicitly makes the upgrade go through.
-    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--no-default-whitelist' => true, '--whitelist' => [ElephStamp::FAKE_CALENDAR_URL]]);
+    // Allowing the calendar explicitly makes the upgrade go through.
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--whitelist' => ['https://stranger.example']]);
 
     $this->tester->assertCommandIsSuccessful();
+});
+
+it('keeps the calendars it stamps with upgradable without the default whitelist', function (): void {
+    $this->calendar->confirmAll();
+
+    $this->tester->run(['upgrade', 'receipts' => [$this->path], '--no-default-whitelist' => true]);
+
+    $this->tester->assertCommandIsSuccessful();
+
+    expect(Receipt::fromPath($this->path)->isComplete())->toBeTrue();
 });
 
 it('reports an unreadable proof, continues with the others, and fails', function (): void {

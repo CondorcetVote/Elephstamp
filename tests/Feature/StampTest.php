@@ -152,19 +152,35 @@ it('tolerates a failing calendar during upgrade and still merges a good one', fu
 
 it('skips calendars outside the upgrade whitelist', function (): void {
     $calendar = new FakeCalendarClient;
+    $receipt = ElephStamp::fake($calendar)->stamp(FileToStamp::fromContent('x'));
+    $calendar->confirmAll();
+
+    $client = new ElephStamp(
+        calendarClient: $calendar,
+        calendarUrls: ['https://only.trusted.example'],
+        upgradeWhitelist: ['https://*.also.trusted.example'],
+    );
+
+    // The fake calendar URL is neither whitelisted nor stamped with, so upgrade contacts nothing.
+    expect($client->upgrade($receipt))->toBeFalse()
+        ->and($receipt->isPending())->toBeTrue();
+});
+
+it('always allows upgrading from the calendars it stamps with', function (): void {
+    $calendar = new FakeCalendarClient;
     $client = new ElephStamp(
         calendarClient: $calendar,
         calendarUrls: [ElephStamp::FAKE_CALENDAR_URL],
         randomSource: new DeterministicRandomSource,
-        upgradeWhitelist: ['https://only.trusted.example'],
+        upgradeWhitelist: [],
+        blockHeaderSource: $calendar->blocks(),
     );
 
     $receipt = $client->stamp(FileToStamp::fromContent('x'));
     $calendar->confirmAll();
 
-    // The fake calendar URL is not whitelisted, so upgrade contacts nothing.
-    expect($client->upgrade($receipt))->toBeFalse()
-        ->and($receipt->isPending())->toBeTrue();
+    expect($client->upgrade($receipt))->toBeTrue()
+        ->and($receipt->isComplete())->toBeTrue();
 });
 
 it('describes a proof as a readable tree', function (): void {
