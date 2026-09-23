@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use CondorcetVote\ElephStamp\Attestation\PendingAttestation;
 use CondorcetVote\ElephStamp\Console\Application;
-use CondorcetVote\ElephStamp\Receipt;
+use CondorcetVote\ElephStamp\Operation\{Append, Sha256};
+use CondorcetVote\ElephStamp\{DetachedTimestampFile, Receipt, Timestamp};
 use Symfony\Component\Console\Tester\ApplicationTester;
 
 beforeEach(function (): void {
@@ -54,6 +56,49 @@ it('shows a bitcoin attestation leaf on a complete proof', function (): void {
     $this->tester->run(['tree', 'receipts' => [__DIR__ . '/../../fixtures/hello-world.txt.ots']]);
 
     expect($this->tester->getDisplay())->toContain('bitcoin attestation → block 358391');
+});
+
+it('groups the calendar branches under the digest submitted to them', function (): void {
+    $this->tester->run(['tree', 'receipts' => [__DIR__ . '/../../fixtures/two-calendars.txt.ots']]);
+
+    $this->tester->assertCommandIsSuccessful();
+
+    expect($this->tester->getDisplay())
+        ->toContain('├── append 839037eef449dec6dac322ca97347c45 = efaa174f68e59705757460f4f7d204bd2b535cfd194d9d945418732129404ddb839037eef449dec6dac322ca97347c45 (privacy nonce)')
+        ->toContain('└── submitted to the calendars = 679a59f6661f9d809d6f72d2cc080a20435c5c793ace1961ca78e38693f2f53d' . \PHP_EOL)
+        ->toContain('   ├── append 6b4023b6edd3a0eeeb09e5d718723b9e')
+        ->toContain('   └── append a3ad701ef9f10535a84968b5a99d8580');
+});
+
+it('submits the merkle root of a batch', function (): void {
+    $this->tester->run(['tree', 'receipts' => [__DIR__ . '/../../fixtures/merkle2.txt.ots'], '--no-hashes' => true]);
+
+    expect($this->tester->getDisplay())
+        ->toContain('├── append b63d8f213d047298b8ab4595acd8e5d0 (privacy nonce)')
+        ->toContain('├── append 026356e7972f023930ec84c213adedc4050460973935bbd2f4df3d7bd5dec55f' . \PHP_EOL)
+        ->toContain('└── submitted to the calendars' . \PHP_EOL);
+});
+
+it('says when the file digest itself was submitted', function (): void {
+    $root = new Timestamp(hash('sha256', 'file A', true));
+    $root->addOp(new Append(str_repeat("\x01", 16)))->addOp(new Sha256)->addAttestation(new PendingAttestation('https://a.example'));
+    $root->addOp(new Append(str_repeat("\x02", 16)))->addOp(new Sha256)->addAttestation(new PendingAttestation('https://b.example'));
+    $path = makeTempDir() . '/a.txt.ots';
+    new Receipt(new DetachedTimestampFile(new Sha256, $root))->saveToPath($path);
+
+    $this->tester->run(['tree', 'receipts' => [$path]]);
+
+    expect($this->tester->getDisplay())
+        ->toContain('└── submitted to the calendars = ' . hash('sha256', 'file A') . ' (the file digest itself, no nonce)')
+        ->not->toContain('privacy nonce)');
+});
+
+it('marks no submission point on a single calendar branch', function (): void {
+    $this->tester->run(['tree', 'receipts' => [__DIR__ . '/../../fixtures/incomplete.txt.ots']]);
+
+    expect($this->tester->getDisplay())
+        ->not->toContain('submitted to the calendars')
+        ->not->toContain('privacy nonce');
 });
 
 it('reports an unreadable proof and keeps going', function (): void {

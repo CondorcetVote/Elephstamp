@@ -352,16 +352,32 @@ elephstamp info contract.pdf.ots -v        # full commitments in the calendar ta
 
 Works **offline**: nothing is contacted. The report has four parts.
 
-**Overview.** Status, hash algorithm, file digest, the original file and
-whether its digest still matches, proof size:
+**Overview.** Status, hash algorithm, file digest, the digest submitted to
+the calendars, the original file and whether its digest still matches, proof
+size:
 
 ```
-  Status          pending — waiting on 2 calendars; run "upgrade" to poll
-  File hash       sha256
-  File digest     d32fee9a827f5a0d580f80beb7edce662dd99fcd6591e4ef8a6244403df0b7c9
-  Original file   merkle1.txt — digest matches
-  Proof size      335 bytes
+  Status             pending — waiting on 2 calendars; run "upgrade" to poll
+  File hash          sha256
+  File digest        d32fee9a827f5a0d580f80beb7edce662dd99fcd6591e4ef8a6244403df0b7c9
+  Submitted digest   c8f78972680bec45199bf6f19472fe1db32ceeed4509c79f345086bf4888d3fa — root of a batch merkle tree, behind a privacy nonce
+  Original file      merkle1.txt — digest matches
+  Proof size         335 bytes
 ```
+
+*Submitted digest* is what the calendars actually received, which is all
+they know about your file. It reads:
+
+- `the file digest, behind a privacy nonce`: the default for a single file;
+  the calendars cannot tell which file it stands for.
+- `root of a batch merkle tree, behind a privacy nonce`: several files were
+  stamped together (as above); the calendars got one root for all of them.
+- `the file digest itself, no nonce: the calendars know it` (or `…, without
+  nonce` for a batch): stamped with `--no-nonce`.
+- `unknown: …`: the proof has a single calendar branch, so the hand-over
+  point cannot be told apart from that calendar's own operations. The value
+  is inferred from the proof's shape, not stored in it; see
+  [`tree`](#tree--every-hash).
 
 The original file is found automatically when it sits next to the proof
 (`contract.pdf` for `contract.pdf.ots`); otherwise the line reads
@@ -458,23 +474,42 @@ is abbreviated.
 
 ```
 file sha256 digest d288b2ee212b01e3e5f6d333df3a4d53f292cc3f07b09013c0b40c8e7dcb9c03
-├── append 46d842bd5d8377e0f42041bec9bda667 = d288b2ee…9c0346d842bd5d8377e0f42041bec9bda667
+├── append 46d842bd5d8377e0f42041bec9bda667 = d288b2ee…9c0346d842bd5d8377e0f42041bec9bda667 (privacy nonce)
 ├── sha256 = 95e2b314af1a11524778ade82197444350d46c60894e7839863a401746e5c00f
-├── append 332c572f9c4b8d5db9d99758d48fff34 = 95e2b314…c00f332c572f9c4b8d5db9d99758d48fff34
-│   ├── sha256 = 173f127e0e8832929232858ca0b7241229d535b22073144a1a433b5aaa5d6cf4
-│   ├── prepend 57e89f38 = 57e89f38173f127e0e8832929232858ca0b7241229d535b22073144a1a433b5aaa5d6cf4
-│   ├── append 73c6dc4d0cbc29f0 = 57e89f38173f…6cf473c6dc4d0cbc29f0
-│   └── pending attestation → https://bob.btc.calendar.opentimestamps.org
-└── append e7ad29076f188033d20767602ca3a8e0 = 95e2b314…c00fe7ad29076f188033d20767602ca3a8e0
-    ├── sha256 = c0b849c680f7c6e13c719a3bfa96ce53c83095eca7c5a244ca991aeebbc87a4e
-    ├── prepend 57e89f37 = …
-    ├── append 62df56371ae23d8d = …
-    └── unknown attestation (tag 0102030405060708)
+└── submitted to the calendars = 95e2b314af1a11524778ade82197444350d46c60894e7839863a401746e5c00f
+   ├── append 332c572f9c4b8d5db9d99758d48fff34 = 95e2b314…c00f332c572f9c4b8d5db9d99758d48fff34
+   │   ├── sha256 = 173f127e0e8832929232858ca0b7241229d535b22073144a1a433b5aaa5d6cf4
+   │   ├── prepend 57e89f38 = 57e89f38173f127e0e8832929232858ca0b7241229d535b22073144a1a433b5aaa5d6cf4
+   │   ├── append 73c6dc4d0cbc29f0 = 57e89f38173f…6cf473c6dc4d0cbc29f0
+   │   └── pending attestation → https://bob.btc.calendar.opentimestamps.org
+   └── append e7ad29076f188033d20767602ca3a8e0 = 95e2b314…c00fe7ad29076f188033d20767602ca3a8e0
+      ├── sha256 = c0b849c680f7c6e13c719a3bfa96ce53c83095eca7c5a244ca991aeebbc87a4e
+      ├── prepend 57e89f37 = …
+      ├── append 62df56371ae23d8d = …
+      └── unknown attestation (tag 0102030405060708)
 ```
 
 (The example above is abbreviated for this page; the real output prints every
 hash in full.) A linear chain of operations stays flat; only a real fork nests
 its branches, like the reference client's `ots info`.
+
+The tree separates what your side computed from what the calendars did:
+
+- **`(privacy nonce)`** flags the random bytes the client appended to the file
+  digest before hashing again (absent with `stamp --no-nonce`).
+- **`submitted to the calendars`** is the digest actually sent to every
+  calendar, with their branches grouped below it. Everything above it is
+  client-side (nonce, then the merkle tree of a multi-file batch); everything
+  below belongs to the calendars. The `append` opening each calendar branch is
+  that calendar's own nonce, not yours. With `--no-nonce` on a single file,
+  the node sits right under the file digest and reads `(the file digest
+  itself, no nonce)`.
+
+A proof is not labelled with that point: it is inferred as the first place
+where the calendar branches diverge (or a digest several calendars attested
+directly). `info` reports the same digest on its *Submitted digest* line. A proof with a single branch (one
+calendar, or a complete proof reduced to its Bitcoin path) has no such fork,
+so neither marker is shown rather than guessed.
 
 | Option | Effect |
 | --- | --- |
@@ -515,6 +550,11 @@ included.)
         "digest_matches": true
     },
     "proof_size_bytes": 335,
+    "submission": {
+        "digest": "c8f78972680bec45199bf6f19472fe1db32ceeed4509c79f345086bf4888d3fa",
+        "privacy_nonce": true,
+        "batch": true
+    },
     "calendars": [
         {
             "url": "https://alice.btc.calendar.opentimestamps.org",
@@ -544,7 +584,9 @@ included.)
 `file.path` and `file.digest_matches` are `null` when no original file was
 checked; `digest_matches` is also `null` when the file could not be read.
 `recorded_at`, `commitment` and `transaction_id` are `null` when they cannot
-be determined. The proof above is a composite, built to show every
+be determined. `submission` is `null` when the submitted digest cannot be told
+apart (a single calendar branch); `submission.digest` is `null` below an
+operation that cannot be computed. The proof above is a composite, built to show every
 field at once: a real one rarely carries a pending calendar, a Bitcoin
 attestation and an unknown notary all together.
 

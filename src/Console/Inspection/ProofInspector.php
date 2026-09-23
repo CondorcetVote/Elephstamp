@@ -37,9 +37,17 @@ final class ProofInspector
         $submissions = [];
         $unknown = [];
 
-        $this->walk($receipt->detachedTimestampFile()->timestamp, [], $submissions, $unknown);
+        $root = $receipt->detachedTimestampFile()->timestamp;
+        $this->walk($root, [], $submissions, $unknown);
 
-        return new ProofInspection($receipt, $submissions, $receipt->bitcoinAnchors(), $unknown, \strlen($receipt->toBytes()));
+        return new ProofInspection(
+            $receipt,
+            $submissions,
+            $receipt->bitcoinAnchors(),
+            $unknown,
+            \strlen($receipt->toBytes()),
+            SubmissionPoint::locate($root),
+        );
     }
 
     /**

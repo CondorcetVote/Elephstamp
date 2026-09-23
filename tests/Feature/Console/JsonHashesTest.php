@@ -108,6 +108,12 @@ it('never abbreviates a hash in info --json', function (): void {
         ->and(hexValues($document))->not->toBeEmpty();
 });
 
+it('never abbreviates the submitted digest in info --json', function (): void {
+    $document = jsonAtEveryVerbosity($this->tester, ['info', 'receipts' => [__DIR__ . '/../../fixtures/two-calendars.txt.ots']]);
+
+    expect($document['submission']['digest'])->toBe('679a59f6661f9d809d6f72d2cc080a20435c5c793ace1961ca78e38693f2f53d');
+});
+
 it('never abbreviates a hash in upgrade --json', function (): void {
     $this->calendar->confirmAll(812_345);
     $pending = file_get_contents($this->pendingPath);

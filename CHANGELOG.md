@@ -21,6 +21,16 @@
   (`Sha1`, `Sha256`, `Ripemd160`), which hash files as a stream.
 - `CalendarWhitelist::resolve()` returns the normalized URL to contact for an
   allowed calendar URI, or `null` when it is not allowed.
+- `elephstamp tree` shows which digest was sent to the calendars: their
+  branches are grouped under a `submitted to the calendars` node, and the
+  client's random nonce is flagged `(privacy nonce)`. A proof stamped with
+  `--no-nonce` reads `(the file digest itself, no nonce)` instead. Proofs with
+  a single calendar branch are drawn as before.
+- `elephstamp info` reports the same digest on a new *Submitted digest* line,
+  saying whether it hides the file digest behind a privacy nonce and whether
+  it is the root of a multi-file batch; `info --json` carries it as
+  `submission` (`digest`, `privacy_nonce`, `batch`), or `null` when a single
+  calendar branch does not show it.
 
 ### Changed
 

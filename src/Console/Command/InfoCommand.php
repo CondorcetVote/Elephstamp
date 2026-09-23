@@ -6,7 +6,7 @@ namespace CondorcetVote\ElephStamp\Console\Command;
 
 use CondorcetVote\ElephStamp\Calendar\CalendarWhitelist;
 use CondorcetVote\ElephStamp\Bitcoin\BitcoinAnchor;
-use CondorcetVote\ElephStamp\Console\Inspection\{CalendarSubmission, ProofInspection, ProofInspector, UnknownNotary};
+use CondorcetVote\ElephStamp\Console\Inspection\{CalendarSubmission, ProofInspection, ProofInspector, SubmissionPoint, UnknownNotary};
 use CondorcetVote\ElephStamp\Console\{ClientOptions, Formatter};
 use CondorcetVote\ElephStamp\Exception\ElephStampException;
 use CondorcetVote\ElephStamp\{FileToStamp, Receipt, Status};
@@ -24,6 +24,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
           * the hashed file's digest, and whether it still matches the original file
             (found automatically as <comment><proof without .ots></comment>, or given with <comment>--file</comment>);
           * the overall status: <comment>pending</comment> or <comment>complete</comment>;
+          * the digest actually submitted to the calendars, and whether it hides the file
+            digest behind a privacy nonce;
           * every calendar submission: which calendar, when it recorded the commitment,
             whether it has been confirmed and whether <info>upgrade</info> may still contact it;
           * every Bitcoin attestation, with the id of the transaction carrying the
@@ -147,6 +149,7 @@ final class InfoCommand
             ['Status' => self::statusLine($inspection)],
             ['File hash' => $receipt->hashOperation()->describe()],
             ['File digest' => $receipt->fileDigestHex()],
+            ['Submitted digest' => self::submissionLine($inspection->submissionPoint)],
             ['Original file' => self::originalLine($original, $expected, $matches)],
             ['Proof size' => Formatter::bytes($inspection->sizeInBytes)],
         );
@@ -245,6 +248,25 @@ final class InfoCommand
         return \sprintf('%s — waiting on %s; run "upgrade" to poll', Formatter::status(Status::Pending), Formatter::plural($pending, 'calendar'));
     }
 
+    private static function submissionLine(?SubmissionPoint $point): string
+    {
+        if ($point === null) {
+            return '<fg=gray>unknown: with a single calendar branch, the proof does not show where the calendar took over (see "tree")</>';
+        }
+
+        $digest = $point->digestHex() ?? '<fg=gray>not computable</>';
+
+        if ($point->isFileDigest()) {
+            return \sprintf('%s — the file digest itself, no nonce: <fg=yellow>the calendars know it</>', $digest);
+        }
+
+        $what = $point->isBatchRoot() ? 'root of a batch merkle tree' : 'the file digest';
+
+        return $point->nonce !== null
+            ? \sprintf('%s — %s, behind a <fg=green>privacy nonce</>', $digest, $what)
+            : \sprintf('%s — %s, <fg=yellow>without nonce</>', $digest, $what);
+    }
+
     private static function originalLine(?string $original, ?string $expected, ?bool $matches): string
     {
         if ($original === null) {
@@ -331,6 +353,11 @@ final class InfoCommand
                 'digest_matches' => $matches,
             ],
             'proof_size_bytes' => $inspection->sizeInBytes,
+            'submission' => $inspection->submissionPoint === null ? null : [
+                'digest' => $inspection->submissionPoint->digestHex(),
+                'privacy_nonce' => $inspection->submissionPoint->nonce !== null,
+                'batch' => $inspection->submissionPoint->isBatchRoot(),
+            ],
             'calendars' => array_map(static fn(CalendarSubmission $s): array => [
                 'url' => $s->calendarUrl,
                 'commitment' => $s->commitmentHex(),

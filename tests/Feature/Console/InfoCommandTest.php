@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use CondorcetVote\ElephStamp\Attestation\PendingAttestation;
 use CondorcetVote\ElephStamp\Console\Application;
+use CondorcetVote\ElephStamp\Operation\{Append, Sha256};
+use CondorcetVote\ElephStamp\{DetachedTimestampFile, Receipt, Timestamp};
 use Symfony\Component\Console\Tester\ApplicationTester;
 
 const FIXTURES = __DIR__ . '/../../fixtures';
@@ -156,6 +159,11 @@ it('emits JSON for one proof', function (): void {
         ->and($document['file']['path'])->toBeNull()
         ->and($document['file']['digest_matches'])->toBeNull()
         ->and($document['proof_size_bytes'])->toBe(265)
+        ->and($document['submission'])->toBe([
+            'digest' => '95e2b314af1a11524778ade82197444350d46c60894e7839863a401746e5c00f',
+            'privacy_nonce' => true,
+            'batch' => false,
+        ])
         ->and($document['calendars'])->toHaveCount(1)
         ->and($document['calendars'][0]['url'])->toBe('https://bob.btc.calendar.opentimestamps.org')
         ->and($document['calendars'][0]['recorded_at'])->toBe('2016-09-26T04:08:24+00:00')
@@ -163,6 +171,60 @@ it('emits JSON for one proof', function (): void {
         ->and($document['calendars'][0]['upgradable'])->toBeTrue()
         ->and($document['bitcoin_attestations'])->toBe([])
         ->and($document['unknown_attestations'])->toBe([['tag' => '0102030405060708', 'payload_bytes' => 46]]);
+});
+
+it('shows the digest submitted behind a privacy nonce', function (): void {
+    $this->tester->run(['info', 'receipts' => [FIXTURES . '/two-calendars.txt.ots']]);
+
+    expect($this->tester->getDisplay())
+        ->toContain('Submitted digest   679a59f6661f9d809d6f72d2cc080a20435c5c793ace1961ca78e38693f2f53d — the file digest, behind a privacy nonce');
+});
+
+it('shows the batch merkle root as the submitted digest', function (): void {
+    $this->tester->run(['info', 'receipts' => [FIXTURES . '/merkle2.txt.ots'], '--json' => true]);
+
+    $document = json_decode($this->tester->getDisplay(), true, flags: \JSON_THROW_ON_ERROR);
+
+    expect($document['submission'])->toBe([
+        'digest' => 'c8f78972680bec45199bf6f19472fe1db32ceeed4509c79f345086bf4888d3fa',
+        'privacy_nonce' => true,
+        'batch' => true,
+    ]);
+
+    $this->tester->run(['info', 'receipts' => [FIXTURES . '/merkle2.txt.ots']]);
+
+    expect($this->tester->getDisplay())->toContain('c8f78972680bec45199bf6f19472fe1db32ceeed4509c79f345086bf4888d3fa — root of a batch merkle tree, behind a privacy nonce');
+});
+
+it('warns when the file digest itself was submitted', function (): void {
+    $root = new Timestamp(hash('sha256', 'file A', true));
+    $root->addOp(new Append(str_repeat("\x01", 16)))->addOp(new Sha256)->addAttestation(new PendingAttestation('https://a.example'));
+    $root->addOp(new Append(str_repeat("\x02", 16)))->addOp(new Sha256)->addAttestation(new PendingAttestation('https://b.example'));
+    $path = makeTempDir() . '/a.txt.ots';
+    new Receipt(new DetachedTimestampFile(new Sha256, $root))->saveToPath($path);
+
+    $this->tester->run(['info', 'receipts' => [$path]]);
+
+    expect($this->tester->getDisplay())
+        ->toContain(hash('sha256', 'file A') . ' — the file digest itself, no nonce: the calendars know it');
+
+    $this->tester->run(['info', 'receipts' => [$path], '--json' => true]);
+
+    expect(json_decode($this->tester->getDisplay(), true, flags: \JSON_THROW_ON_ERROR)['submission'])->toBe([
+        'digest' => hash('sha256', 'file A'),
+        'privacy_nonce' => false,
+        'batch' => false,
+    ]);
+});
+
+it('does not guess the submitted digest on a single calendar branch', function (): void {
+    $this->tester->run(['info', 'receipts' => [FIXTURES . '/incomplete.txt.ots']]);
+
+    expect(unwrapped($this->tester->getDisplay()))->toContain(unwrapped('Submitted digest   unknown: with a single calendar branch'));
+
+    $this->tester->run(['info', 'receipts' => [FIXTURES . '/incomplete.txt.ots'], '--json' => true]);
+
+    expect(json_decode($this->tester->getDisplay(), true, flags: \JSON_THROW_ON_ERROR)['submission'])->toBeNull();
 });
 
 it('emits a JSON list for several proofs, including errors', function (): void {

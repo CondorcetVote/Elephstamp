@@ -17,6 +17,7 @@ final class ProofInspection
      * @param list<BitcoinAnchor>      $anchors
      * @param list<UnknownNotary>      $unknownNotaries
      * @param int                      $sizeInBytes     size of the serialized `.ots`
+     * @param SubmissionPoint|null     $submissionPoint the digest handed over to the calendars; null when the proof layout does not show it
      */
     public function __construct(
         public readonly Receipt $receipt,
@@ -24,6 +25,7 @@ final class ProofInspection
         public readonly array $anchors,
         public readonly array $unknownNotaries,
         public readonly int $sizeInBytes,
+        public readonly ?SubmissionPoint $submissionPoint = null,
     ) {}
 
     public function status(): Status
