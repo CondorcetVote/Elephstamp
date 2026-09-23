@@ -49,9 +49,10 @@ in what it does with them.
 ## Requirements
 
 - PHP **8.5+** with the `mbstring` extension.
-- [`symfony/http-client`](https://symfony.com/doc/current/http_client.html)
-  and [`symfony/console`](https://symfony.com/doc/current/components/console.html)
-  (pulled in automatically).
+- [`symfony/http-client`](https://symfony.com/doc/current/http_client.html),
+  [`symfony/console`](https://symfony.com/doc/current/components/console.html)
+  and [`kornrunner/keccak`](https://github.com/kornrunner/php-keccak) for the
+  `keccak256` operation (all pulled in automatically).
 
 ## Installation
 

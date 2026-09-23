@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace CondorcetVote\ElephStamp\Operation;
 
-use CondorcetVote\ElephStamp\Exception\SerializationException;
+use CondorcetVote\ElephStamp\Exception\InvalidInputException;
+use kornrunner\Keccak;
 
 /**
- * Keccak-256, as used by Ethereum attestations.
+ * Keccak-256, the original Keccak as used by Ethereum.
  *
- * This library only supports the Bitcoin calendar workflow, and PHP ships no
- * Keccak-256 implementation (its {@see hash()} "sha3-256" uses different
- * padding). Proofs containing a keccak256 edge still deserialize and
- * round-trip byte-identically, but the subtree below the edge is marked
- * unverifiable: its messages are unknown, so it can be neither verified nor
- * upgraded.
+ * This is not SHA3-256: the two share the permutation but pad differently, so
+ * PHP's `hash('sha3-256')` gives another result. The digest comes from the
+ * pure-PHP `kornrunner/keccak` package, which has no incremental interface:
+ * hashing a file with it holds the whole content in memory, and runs at pure
+ * PHP speed (about a megabyte per second). Proofs use it as an edge; as a
+ * file hash it is here for interoperability, not recommended for large files.
  */
-final class Keccak256 extends UnaryOperation
+final class Keccak256 extends HashOperation
 {
     public const string TAG = "\x67";
 
@@ -25,18 +26,40 @@ final class Keccak256 extends UnaryOperation
         return self::TAG;
     }
 
-    public function isComputable(): bool
-    {
-        return false;
-    }
-
     public function describe(): string
     {
         return 'keccak256';
     }
 
-    protected function compute(string $message): string
+    public function digestLength(): int
     {
-        throw new SerializationException('Keccak-256 operations are not supported by this library');
+        return 32;
+    }
+
+    public function hashData(string $data): string
+    {
+        return Keccak::hash($data, 256, raw_output: true);
+    }
+
+    public function hashStream($stream): string
+    {
+        $data = stream_get_contents($stream);
+
+        if ($data === false) {
+            throw new InvalidInputException('Failed while reading the stream to hash');
+        }
+
+        return $this->hashData($data);
+    }
+
+    public function hashChunks(iterable $chunks): string
+    {
+        $data = '';
+
+        foreach ($chunks as $chunk) {
+            $data .= $chunk;
+        }
+
+        return $this->hashData($data);
     }
 }

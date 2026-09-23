@@ -7,7 +7,7 @@ namespace CondorcetVote\ElephStamp\Operation;
 /**
  * SHA-256, the default and recommended hash operation.
  */
-final class Sha256 extends HashOperation
+final class Sha256 extends NativeHashOperation
 {
     public const string TAG = "\x08";
 

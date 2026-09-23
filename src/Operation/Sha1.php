@@ -11,7 +11,7 @@ namespace CondorcetVote\ElephStamp\Operation;
  * proves two messages existed before a point in time, which is exactly the
  * claim a timestamp makes.
  */
-final class Sha1 extends HashOperation
+final class Sha1 extends NativeHashOperation
 {
     public const string TAG = "\x02";
 

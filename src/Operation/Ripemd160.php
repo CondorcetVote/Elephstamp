@@ -7,7 +7,7 @@ namespace CondorcetVote\ElephStamp\Operation;
 /**
  * RIPEMD-160.
  */
-final class Ripemd160 extends HashOperation
+final class Ripemd160 extends NativeHashOperation
 {
     public const string TAG = "\x03";
 

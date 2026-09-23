@@ -25,7 +25,7 @@ abstract class HashOperation extends UnaryOperation
      */
     public static function names(): array
     {
-        return ['sha256', 'sha1', 'ripemd160'];
+        return ['sha256', 'sha1', 'ripemd160', 'keccak256'];
     }
 
     /**
@@ -39,6 +39,7 @@ abstract class HashOperation extends UnaryOperation
             'sha256' => new Sha256,
             'sha1' => new Sha1,
             'ripemd160' => new Ripemd160,
+            'keccak256' => new Keccak256,
             default => throw new InvalidInputException(\sprintf('Unknown hash operation "%s"; known: %s', $name, implode(', ', self::names()))),
         };
     }
@@ -49,49 +50,26 @@ abstract class HashOperation extends UnaryOperation
     abstract public function digestLength(): int;
 
     /**
-     * Name of the algorithm as understood by PHP's {@see hash()} family.
-     */
-    abstract protected function algorithm(): string;
-
-    /**
      * Hash a whole in-memory payload.
      *
      * Unlike {@see Operation::apply()} this is not bound by the proof message
      * length limits: it hashes the original file content, which can be large.
      */
-    final public function hashData(string $data): string
-    {
-        return hash($this->algorithm(), $data, binary: true);
-    }
+    abstract public function hashData(string $data): string;
 
     /**
-     * Hash a stream from its current position to its end, in bounded memory.
+     * Hash a stream from its current position to its end.
      *
      * @param resource $stream
      */
-    final public function hashStream($stream): string
-    {
-        $context = hash_init($this->algorithm());
-        hash_update_stream($context, $stream);
-
-        return hash_final($context, binary: true);
-    }
+    abstract public function hashStream($stream): string;
 
     /**
-     * Hash a sequence of chunks incrementally, in bounded memory.
+     * Hash a sequence of chunks as one message.
      *
      * @param iterable<string> $chunks
      */
-    final public function hashChunks(iterable $chunks): string
-    {
-        $context = hash_init($this->algorithm());
-
-        foreach ($chunks as $chunk) {
-            hash_update($context, $chunk);
-        }
-
-        return hash_final($context, binary: true);
-    }
+    abstract public function hashChunks(iterable $chunks): string;
 
     protected function compute(string $message): string
     {

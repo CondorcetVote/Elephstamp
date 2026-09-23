@@ -66,9 +66,10 @@ abstract class Operation
     /**
      * Whether this library can compute the operation's result.
      *
-     * A non-computable operation (keccak256) still parses and serializes, but
-     * the subtree below it carries unknown messages: it cannot be verified,
-     * upgraded, or extended.
+     * Every operation the format currently defines is computable. A
+     * non-computable one would still parse and serialize, but the subtree
+     * below it would carry unknown messages: it could be neither verified,
+     * upgraded, nor extended.
      */
     public function isComputable(): bool
     {

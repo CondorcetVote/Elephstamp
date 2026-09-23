@@ -115,6 +115,20 @@ it('commits with another hash algorithm', function (): void {
         ->and($tester->getDisplay())->toContain('sha1 digest');
 });
 
+it('commits with keccak256 on request', function (): void {
+    $tester = stampCli();
+
+    $tester->run(['stamp', 'files' => [$this->dir . '/a.txt'], '--hash' => 'keccak256']);
+
+    $tester->assertCommandIsSuccessful();
+
+    $receipt = Receipt::fromPath($this->dir . '/a.txt.ots');
+
+    expect($receipt->hashOperation()->describe())->toBe('keccak256')
+        ->and($receipt->fileDigestHex())->toBe(kornrunner\Keccak::hash('file A', 256))
+        ->and($tester->getDisplay())->toContain('keccak256 digest');
+});
+
 it('stamps a raw digest in the --hash algorithm', function (): void {
     $tester = stampCli();
     $digest = hash('ripemd160', 'elsewhere');

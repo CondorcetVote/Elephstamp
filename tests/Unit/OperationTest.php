@@ -62,13 +62,33 @@ it('rejects a message that is too long', function (): void {
     (new Sha256)->apply(str_repeat('a', Operation::MAX_MSG_LENGTH + 1));
 })->throws(SerializationException::class, 'too long');
 
-it('does not support applying keccak256 but recognises its tag', function (): void {
+it('computes keccak256, the Ethereum variant rather than SHA3-256', function (string $message, string $expected): void {
     $operation = Operation::deserialize(new Deserializer("\x67"));
 
-    expect($operation)->toBeInstanceOf(Keccak256::class);
+    expect($operation)->toBeInstanceOf(Keccak256::class)
+        ->and($operation->isComputable())->toBeTrue()
+        ->and(bin2hex($operation->apply($message)))->toBe($expected)
+        ->and(bin2hex((new Keccak256)->hashData($message)))->toBe($expected)
+        ->and($expected)->not->toBe(hash('sha3-256', $message))
+        ->and((new Keccak256)->digestLength())->toBe(32)
+        ->and((new Keccak256)->describe())->toBe('keccak256');
+})->with([
+    'empty' => ['', 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470'],
+    'abc' => ['abc', '4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45'],
+    'fox' => ['The quick brown fox jumps over the lazy dog', '4d741b6f1eb29cb2a9b9911c82f56fa8d73b04959d3d9d222895df6c0b28aa15'],
+]);
 
-    $operation->apply('anything');
-})->throws(SerializationException::class, 'Keccak-256');
+it('hashes streams and chunks with keccak256 like in-memory data', function (): void {
+    $payload = random_bytes(300);
+    $stream = fopen('php://temp', 'r+b');
+    fwrite($stream, $payload);
+    rewind($stream);
+
+    expect((new Keccak256)->hashStream($stream))->toBe((new Keccak256)->hashData($payload))
+        ->and((new Keccak256)->hashChunks(str_split($payload, 7)))->toBe((new Keccak256)->hashData($payload));
+
+    fclose($stream);
+});
 
 it('rejects a non-hash operation where a hash is required', function (): void {
     $serializer = new Serializer;
@@ -105,9 +125,10 @@ it('resolves hash operations by name', function (): void {
     expect(HashOperation::fromName('sha256'))->toBeInstanceOf(Sha256::class)
         ->and(HashOperation::fromName('SHA1'))->toBeInstanceOf(Sha1::class)
         ->and(HashOperation::fromName('ripemd160'))->toBeInstanceOf(Ripemd160::class)
-        ->and(HashOperation::names())->toBe(['sha256', 'sha1', 'ripemd160'])
-        ->and(fn() => HashOperation::fromName('md5'))->toThrow(InvalidInputException::class, 'Unknown hash operation "md5"; known: sha256, sha1, ripemd160')
-        ->and(fn() => HashOperation::fromName('keccak256'))->toThrow(InvalidInputException::class);
+        ->and(HashOperation::fromName('keccak256'))->toBeInstanceOf(Keccak256::class)
+        ->and(HashOperation::names())->toBe(['sha256', 'sha1', 'ripemd160', 'keccak256'])
+        ->and(fn() => HashOperation::fromName('md5'))->toThrow(InvalidInputException::class, 'Unknown hash operation "md5"; known: sha256, sha1, ripemd160, keccak256')
+        ->and(fn() => HashOperation::fromName('sha3-256'))->toThrow(InvalidInputException::class);
 
     foreach (HashOperation::names() as $name) {
         expect(HashOperation::fromName($name)->describe())->toBe($name);

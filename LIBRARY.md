@@ -209,9 +209,10 @@ which is checked when the client stamps or verifies.
 
 The `.ots` format names the algorithm a proof commits to a file with. The
 client hashes with **SHA-256**, like the reference client; the format also
-supports SHA-1 and RIPEMD-160, which the reference tooling reads and verifies
-as well. Choose one with the `hashOperation` constructor argument. It applies
-to every source, `fromDigest()` included, and is written into the proof:
+supports SHA-1, RIPEMD-160 and Keccak-256, which the reference tooling reads
+and verifies as well. Choose one with the `hashOperation` constructor
+argument. It applies to every source, `fromDigest()` included, and is written
+into the proof:
 
 ```php
 use CondorcetVote\ElephStamp\ElephStamp;
@@ -225,10 +226,23 @@ $receipt = $client->stamp(FileToStamp::fromDigest(sha1('report.pdf content', bin
 $receipt->hashOperation()->describe();   // "sha1"
 ```
 
-`HashOperation::names()` lists the accepted names; `fromName()` throws an
-`InvalidInputException` for anything else, Keccak-256 included (PHP has no
-implementation of it). Reading, upgrading and verifying a proof never need
-this setting: a `Receipt` carries its own algorithm, `hashOperation()`.
+`HashOperation::names()` lists the accepted names (`sha256`, `sha1`,
+`ripemd160`, `keccak256`); `fromName()` throws an `InvalidInputException` for
+anything else. Reading, upgrading and verifying a proof never need this
+setting: a `Receipt` carries its own algorithm, `hashOperation()`.
+
+`Keccak256` is the original Keccak, as Ethereum uses it, **not** SHA3-256:
+PHP's `hash('sha3-256')` pads differently and gives another digest. It is
+computed by the pure-PHP `kornrunner/keccak` package, so a `keccak256` edge
+anywhere in a proof, including on the way to a Bitcoin attestation, is
+verified and upgraded like any other. As a *file* hash it is there for
+interoperability: the package has no incremental interface, so the whole
+file is read into memory, at roughly a megabyte per second. Prefer SHA-256
+for anything large.
+
+The three PHP-backed operations extend `NativeHashOperation`, which hashes
+files as a stream; a custom `HashOperation` implements `hashData()`,
+`hashStream()` and `hashChunks()` itself.
 
 The privacy nonce is always mixed in with SHA-256, whatever the file hash, so
 the calendars receive a 32-byte commitment either way. Without a nonce, a

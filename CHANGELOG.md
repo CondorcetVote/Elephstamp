@@ -4,13 +4,21 @@
 
 ### Added
 
-- `elephstamp stamp --hash=sha256|sha1|ripemd160` chooses the algorithm a
-  proof commits to the file with, for files as well as for `--digest`, whose
-  expected length follows. The default stays SHA-256; the algorithm is never
-  guessed from a digest's length.
+- `elephstamp stamp --hash=sha256|sha1|ripemd160|keccak256` chooses the
+  algorithm a proof commits to the file with, for files as well as for
+  `--digest`, whose expected length follows. The default stays SHA-256; the
+  algorithm is never guessed from a digest's length.
 - `HashOperation::fromName()` and `HashOperation::names()` resolve a hash
-  operation from its name (`sha256`, `sha1`, `ripemd160`), e.g. to feed the
-  `hashOperation` constructor argument from user input.
+  operation from its name (`sha256`, `sha1`, `ripemd160`, `keccak256`), e.g.
+  to feed the `hashOperation` constructor argument from user input.
+- Keccak-256 is now computed, through the new `kornrunner/keccak` dependency
+  (the Ethereum variant, not SHA3-256). A `keccak256` edge anywhere in a
+  proof, Bitcoin path included, is verified and upgraded like any other
+  operation instead of leaving its subtree unverifiable; proofs whose file
+  hash is `keccak256` can be read, stamped and verified. As a file hash it
+  holds the whole file in memory and runs at pure-PHP speed.
+- `NativeHashOperation`, the base of the PHP-backed hash operations
+  (`Sha1`, `Sha256`, `Ripemd160`), which hash files as a stream.
 - `CalendarWhitelist::resolve()` returns the normalized URL to contact for an
   allowed calendar URI, or `null` when it is not allowed.
 
@@ -35,6 +43,10 @@
   backslash, a non-ASCII host) are skipped, and so are patterns: they now
   throw an `InvalidInputException`. An explicit `:443` is now treated as no
   port.
+
+- `HashOperation::hashData()`, `hashStream()` and `hashChunks()` are now
+  abstract: a custom hash operation implements them, or extends
+  `NativeHashOperation` and names a PHP `hash()` algorithm as before.
 
 ### Fixed
 

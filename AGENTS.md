@@ -96,8 +96,10 @@ scratch script and verify before committing.
 
 **Out of scope (for now)**
 
-- Non-Bitcoin attestations (Litecoin, Ethereum/Keccak-256) are recognised
-  only enough to be preserved or clearly rejected, not verified.
+- Non-Bitcoin attestations (Litecoin, Ethereum) are recognised only enough
+  to be preserved or clearly rejected, not verified. The `keccak256`
+  operation itself is computed (via `kornrunner/keccak`, the Ethereum
+  variant, not SHA3-256), so it never makes a subtree unverifiable.
 - Reading `bitcoin.conf` for RPC credentials: the CLI takes them explicitly
   (`--node-user`/`--node-password`, `--node-cookie`, or in the URL).
 

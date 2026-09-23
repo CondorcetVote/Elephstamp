@@ -59,3 +59,14 @@ it('rejects an empty precomputed digest', function (): void {
 it('rejects a precomputed digest whose length does not match the hash operation', function (): void {
     FileToStamp::fromDigest('too short')->digest(new Sha256);
 })->throws(InvalidInputException::class, 'does not match');
+
+it('digests every source with keccak256 too', function (): void {
+    $path = makeTempPath();
+    file_put_contents($path, 'keccak me');
+    $expected = kornrunner\Keccak::hash('keccak me', 256, raw_output: true);
+
+    expect(FileToStamp::fromPath($path)->digest(new CondorcetVote\ElephStamp\Operation\Keccak256))->toBe($expected)
+        ->and(FileToStamp::fromSplFileObject(new SplFileObject($path))->digest(new CondorcetVote\ElephStamp\Operation\Keccak256))->toBe($expected)
+        ->and(FileToStamp::fromContent('keccak me')->digest(new CondorcetVote\ElephStamp\Operation\Keccak256))->toBe($expected)
+        ->and(FileToStamp::fromDigest($expected)->digest(new CondorcetVote\ElephStamp\Operation\Keccak256))->toBe($expected);
+});

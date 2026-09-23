@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace CondorcetVote\ElephStamp\Console\Command;
 
 use CondorcetVote\ElephStamp\Console\{ClientFactory, ClientOptions, Formatter, HexDigest};
-use CondorcetVote\ElephStamp\Exception\{ElephStampException};
+use CondorcetVote\ElephStamp\Exception\ElephStampException;
 use CondorcetVote\ElephStamp\Operation\{HashOperation, Sha256};
 use CondorcetVote\ElephStamp\{FileToStamp, Receipt};
 use Symfony\Component\Console\Attribute\{Argument, AsCommand, Option};
@@ -29,8 +29,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
         the real file hash. Pass <comment>--no-nonce</comment> to commit to the plain hash instead.
 
         Files are hashed with SHA-256, the algorithm the reference client uses. <comment>--hash</comment>
-        picks another one the .ots format supports (<comment>sha1</comment>, <comment>ripemd160</comment>), for the files
-        as well as for <comment>--digest</comment>, whose expected length follows.
+        picks another one the .ots format supports (<comment>sha1</comment>, <comment>ripemd160</comment>, <comment>keccak256</comment>), for
+        the files as well as for <comment>--digest</comment>, whose expected length follows.
 
         Exit codes: <info>0</info> all proofs written, <info>1</info> nothing written (bad usage, unreadable file or too few calendars).
         HELP,
@@ -60,7 +60,7 @@ final class StampCommand
         ?string $outputPath = null,
         #[Option(description: 'Timestamp a hex-encoded digest instead of a file (SHA-256, or the --hash algorithm)', name: 'digest')]
         ?string $digest = null,
-        #[Option(description: 'Hash algorithm to commit with: sha256 (default), sha1 or ripemd160', suggestedValues: ['sha256', 'sha1', 'ripemd160'])]
+        #[Option(description: 'Hash algorithm to commit with: sha256 (default), sha1, ripemd160 or keccak256', suggestedValues: ['sha256', 'sha1', 'ripemd160', 'keccak256'])]
         ?string $hash = null,
         #[Option(description: 'Commit to the plain file hash; the calendars (and sibling proofs) then learn it', name: 'no-nonce')]
         bool $noNonce = false,

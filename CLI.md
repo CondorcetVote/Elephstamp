@@ -85,7 +85,7 @@ to the calendars and writes one proof per file, next to it as `<file>.ots`.
 | --- | --- |
 | `-o, --output=PATH` | Write the proof here instead of `<file>.ots`. Single file or digest only. |
 | `--digest=HEX` | Timestamp a hex digest you already computed, instead of a file: 64 characters of SHA-256, or the length of the `--hash` algorithm. Defaults to writing `<hex>.ots`. |
-| `--hash=NAME` | Algorithm the proof commits to the file with: `sha256` (the default, and the only one the reference client produces), `sha1` or `ripemd160`. Applies to files and to `--digest`; never guessed from a digest's length. |
+| `--hash=NAME` | Algorithm the proof commits to the file with: `sha256` (the default, and the only one the reference client produces), `sha1`, `ripemd160` or `keccak256`. Applies to files and to `--digest`; never guessed from a digest's length. `keccak256` reads the whole file into memory and is slow on large files. |
 | `--no-nonce` | Commit to the plain file hash. The calendars, and the sibling proofs of a batch, then learn the real digest. |
 | `-c, --calendar=URL` | Calendar to submit to. Repeatable; replaces the default list. Must be `https`. |
 | `-m, --required=N` | How many calendars must accept the stamp (the "m" of m-of-n). Default `2`, or `1` with a single calendar. |
@@ -399,8 +399,7 @@ reads `complete — anchored in Bitcoin block 358391`.
 - *State* is one of `pending, upgradable`; `confirmed in block N` (a Bitcoin
   attestation already hangs below this submission); `pending, no longer
   polled: the proof is already complete` (see below); `not upgradable:
-  calendar not on the whitelist`; or `not upgradable: sits below an operation
-  this tool cannot compute` (a `keccak256` edge, used by non-Bitcoin notaries).
+  calendar not on the whitelist`.
 
 A single Bitcoin attestation makes a proof complete: it is then fully
 verifiable on its own, and `upgrade` stops polling the other calendars, as the
@@ -475,8 +474,7 @@ file sha256 digest d288b2ee212b01e3e5f6d333df3a4d53f292cc3f07b09013c0b40c8e7dcb9
 
 (The example above is abbreviated for this page; the real output prints every
 hash in full.) A linear chain of operations stays flat; only a real fork nests
-its branches, like the reference client's `ots info`. Below a `keccak256`
-edge the hashes read `(not computable)`.
+its branches, like the reference client's `ots info`.
 
 | Option | Effect |
 | --- | --- |
