@@ -62,7 +62,7 @@ it('reports one outcome per calendar in proof order', function (): void {
         calendarUrls: ['https://down.example', 'https://evil.example', 'https://quiet.example', 'https://good.example', 'https://stranger.other'],
         requiredCalendars: 1,
         randomSource: new DeterministicRandomSource,
-        upgradeWhitelist: ['https://*.example'],
+        upgradeWhitelist: [],
         blockHeaderSource: $blocks,
     );
 
@@ -76,7 +76,7 @@ it('reports one outcome per calendar in proof order', function (): void {
     $upgrader = new ElephStamp(
         calendarClient: scriptedCalendar(),
         calendarUrls: ['https://good.example'],
-        upgradeWhitelist: ['https://*.example'],
+        upgradeWhitelist: ['https://down.example', 'https://evil.example', 'https://quiet.example'],
         blockHeaderSource: $blocks,
     );
 
@@ -196,7 +196,7 @@ it('leaves a complete receipt alone unless asked to poll all calendars', functio
         calendarClient: $calendar,
         calendarUrls: ['https://one.example', 'https://two.example'],
         randomSource: new DeterministicRandomSource,
-        upgradeWhitelist: ['https://*.example'],
+        upgradeWhitelist: [],
         blockHeaderSource: $blocks,
     );
 
@@ -385,7 +385,7 @@ it('keeps the honest calendar and drops the lying one in a single pass', functio
         calendarClient: $calendar,
         calendarUrls: ['https://honest.example', 'https://liar.example'],
         randomSource: new DeterministicRandomSource,
-        upgradeWhitelist: ['https://*.example'],
+        upgradeWhitelist: [],
         blockHeaderSource: $blocks,
     );
 
@@ -417,3 +417,38 @@ it('rejects a confirmation threshold below one', function (): void {
 
     $client->upgrade($receipt, requiredConfirmations: 0);
 })->throws(CondorcetVote\ElephStamp\Exception\InvalidInputException::class, 'requiredConfirmations');
+
+it('contacts the normalized calendar URL and reports the one written in the proof', function (): void {
+    $calendar = new class implements CalendarClient {
+        /**
+         * @var list<string>
+         */
+        public array $polled = [];
+
+        public function submit(array $calendarUrls, string $digest): array
+        {
+            return array_map(static function (string $url) use ($digest): CalendarResponse {
+                $timestamp = new Timestamp($digest);
+                $timestamp->addAttestation(new PendingAttestation('HTTPS://Good.Example:443/'));
+
+                return CalendarResponse::success($url, $timestamp);
+            }, $calendarUrls);
+        }
+
+        public function getTimestamps(array $requests): array
+        {
+            return array_map(function (array $request): CalendarResponse {
+                $this->polled[] = $request['url'];
+
+                return CalendarResponse::notFound($request['url']);
+            }, $requests);
+        }
+    };
+
+    $client = new ElephStamp(calendarClient: $calendar, calendarUrls: ['https://good.example'], randomSource: new DeterministicRandomSource, upgradeWhitelist: []);
+    $report = $client->upgradeWithReport($client->stamp(FileToStamp::fromContent('normalize me')));
+
+    expect($calendar->polled)->toBe(['https://good.example'])
+        ->and($report->results[0]->calendarUrl)->toBe('HTTPS://Good.Example:443/')
+        ->and($report->results[0]->outcome)->toBe(UpgradeOutcome::Pending);
+});

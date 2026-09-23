@@ -2,12 +2,32 @@
 
 ## [Unreleased]
 
+### Added
+
+- `CalendarWhitelist::resolve()` returns the normalized URL to contact for an
+  allowed calendar URI, or `null` when it is not allowed.
+
 ### Changed
 
 - The calendars a client stamps with (`calendarUrls`) are now always allowed
   to be contacted by `upgrade()`, on top of the upgrade whitelist. A private
   calendar no longer has to be listed again in `upgradeWhitelist`; passing
   `upgradeWhitelist: []` now means "only my own calendars".
+- Upgrade whitelist patterns with a glob must now be anchored to a domain: a
+  glob has to be followed by at least two literal labels, the last one not
+  numeric. Patterns such as `https://*`, `https://*.example` or
+  `https://10.0.0.*`, which would let a hostile proof reach any host or a
+  private network, now throw an `InvalidInputException` (the CLI's `-l` exits
+  `1`). A pattern without a host is refused too. Hosts written without a glob,
+  IP addresses included, are unaffected.
+- The upgrade whitelist now parses patterns and proof URIs strictly as
+  RFC 3986 (PHP's native URI extension) instead of `parse_url()`, and
+  `upgrade()` contacts each calendar at the normalized URL it checked rather
+  than at the raw URI from the proof, so no difference between URL parsers can
+  send a request to another host. URIs the strict parser rejects (a
+  backslash, a non-ASCII host) are skipped, and so are patterns: they now
+  throw an `InvalidInputException`. An explicit `:443` is now treated as no
+  port.
 
 ## [1.3.0] — 2026-09-23
 

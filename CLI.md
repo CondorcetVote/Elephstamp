@@ -642,7 +642,13 @@ https://*.calendar.catallaxy.com
 
 Add your own with `-l/--whitelist` (repeatable). Patterns are `https://host`
 URLs whose host may contain shell globs; an explicit port must be listed
-explicitly; `http://` is refused. `--no-default-whitelist` keeps only your
+explicitly; `http://` is refused. A glob must be followed by at least two
+literal domain labels (`https://*.internal.example`): `https://*`,
+`https://*.example` or `https://10.0.0.*` are refused as too broad, and the
+command exits `1`. A host without a glob, IP addresses included, is always
+accepted as written. URLs are parsed strictly (RFC 3986) and each calendar
+is contacted at the normalized URL that was checked, not at the raw string
+from the proof. `--no-default-whitelist` keeps only your
 patterns:
 
 ```bash

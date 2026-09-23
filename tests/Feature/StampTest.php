@@ -138,7 +138,7 @@ it('tolerates a failing calendar during upgrade and still merges a good one', fu
         },
         calendarUrls: ['https://down.example', 'https://up.example'],
         randomSource: new DeterministicRandomSource,
-        upgradeWhitelist: ['https://*.example'],
+        upgradeWhitelist: [],
         blockHeaderSource: $blocks = new FakeBlockHeaderSource,
     );
 

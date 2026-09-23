@@ -626,8 +626,32 @@ $client = new ElephStamp(
 );
 ```
 
-Host patterns accept shell-style globs; URLs with a query, fragment or
+Host patterns accept shell-style globs, but a glob must be followed by at
+least two literal domain labels, the last one not numeric:
+`https://*.internal.example` is fine, while `https://*`, `https://*.example`
+or `https://10.0.0.*` throw an `InvalidInputException`, since they would let a
+hostile proof reach any host, a whole top-level domain or a private network.
+A pattern without a glob is an explicit choice and may name any host,
+including an IP address (`https://10.0.0.5`). URLs with a query, fragment or
 credentials are always rejected.
+
+Patterns and proof URIs are parsed strictly as RFC 3986 (with PHP's native
+`Uri\Rfc3986\Uri`) and compared in normalized form: lowercase host, no dot
+segments, `:443` the same as no port. Anything the parser cannot read, such as
+a backslash or a non-ASCII host, is rejected. The request then goes to that
+normalized URL, never to the raw string from the proof, so what the whitelist
+checked is exactly what is contacted. `CalendarWhitelist::resolve()` exposes
+this for your own checks:
+
+```php
+use CondorcetVote\ElephStamp\Calendar\CalendarWhitelist;
+
+$whitelist = new CalendarWhitelist(['https://*.calendar.opentimestamps.org']);
+
+$whitelist->resolve('HTTPS://Alice.BTC.Calendar.OpenTimestamps.org:443/'); // 'https://alice.btc.calendar.opentimestamps.org'
+$whitelist->resolve('https://evil.example\\@alice.btc.calendar.opentimestamps.org'); // null
+$whitelist->allows('https://alice.btc.calendar.opentimestamps.org'); // true
+```
 
 ### Customising the HTTP client
 

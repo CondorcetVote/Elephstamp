@@ -305,14 +305,17 @@ final class ElephStamp
 
         $results = [];
         $toPoll = [];
+        $urls = [];
 
         // Only contact calendars whose URI is whitelisted: an untrusted `.ots`
-        // must not be able to point us at arbitrary hosts.
+        // must not be able to point us at arbitrary hosts. The request goes to
+        // the whitelist's normalized URL, never to the raw URI from the proof.
         foreach ($receipt->detachedTimestampFile()->timestamp->findPending() as $index => $entry) {
             if ($entry['node']->hasBitcoinAttestation()) {
                 $results[$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Confirmed, blockHeight: self::lowestBlockHeight($entry['node']));
-            } elseif ($this->upgradeWhitelist->allows($entry['attestation']->uri)) {
+            } elseif (($url = $this->upgradeWhitelist->resolve($entry['attestation']->uri)) !== null) {
                 $toPoll[$index] = $entry;
+                $urls[$index] = $url;
             } else {
                 $results[$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Skipped);
             }
@@ -321,11 +324,11 @@ final class ElephStamp
         $blockHeaderSource = null;
 
         if (!empty($toPoll)) {
-            $requests = array_values(array_map(
-                static fn(array $entry): array => ['url' => $entry['attestation']->uri, 'commitment' => $entry['msg']],
-                $toPoll,
-            ));
             $indexes = array_keys($toPoll);
+            $requests = array_map(
+                static fn(int $index): array => ['url' => $urls[$index], 'commitment' => $toPoll[$index]['msg']],
+                $indexes,
+            );
 
             // Responses come back aligned with $requests; a calendar that is
             // unreachable or still has nothing simply yields no timestamp and
