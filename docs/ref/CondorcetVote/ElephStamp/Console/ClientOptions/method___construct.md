@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [ClientOptions](class_ClientOptions.md)
 # Method __construct()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L28)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L33)
 
 ```php
-public function ClientOptions->__construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [] ] )
+public function ClientOptions->__construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [], ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookieFile = null ] )
 ```
 
 ## Parameters
@@ -63,3 +63,35 @@ array $explorerUrls = []
 **Type:** `array`
 
 base URLs of additional Esplora-compatible explorers, e.g. a self-hosted one
+
+### **node:**
+```php
+?string $node = null
+```
+**Type:** `?string`
+
+JSON-RPC URL of a Bitcoin node to verify against, alone or alongside the explorers
+
+### **nodeUser:**
+```php
+?string $nodeUser = null
+```
+**Type:** `?string`
+
+RPC user for $node, with $nodePassword
+
+### **nodePassword:**
+```php
+?string $nodePassword = null
+```
+**Type:** `?string`
+
+RPC password for $node, with $nodeUser
+
+### **nodeCookieFile:**
+```php
+?string $nodeCookieFile = null
+```
+**Type:** `?string`
+
+Bitcoin Core `.cookie` file holding the RPC credentials, instead of a user and password

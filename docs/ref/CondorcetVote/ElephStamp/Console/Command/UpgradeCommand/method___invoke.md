@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ [UpgradeCommand](class_UpgradeCommand.md)
 # Method __invoke()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/UpgradeCommand.php#L74)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/UpgradeCommand.php#L76)
 
 ```php
-public function UpgradeCommand->__invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, array $receipts, [ bool $dryRun = false, bool $all = false, ?string $outputPath = null, array $whitelist = [], bool $noDefaultWhitelist = false, bool $noVerify = false, int $minConfirmations = 6, array $explorer = [], array $explorerUrl = [], ?float $timeout = null, bool $json = false ] ): int
+public function UpgradeCommand->__invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, array $receipts, [ bool $dryRun = false, bool $all = false, ?string $outputPath = null, array $whitelist = [], bool $noDefaultWhitelist = false, bool $noVerify = false, ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookie = null, int $minConfirmations = 6, array $explorer = [], array $explorerUrl = [], ?float $timeout = null, bool $json = false ] ): int
 ```
 
 ## Parameters
@@ -77,6 +77,38 @@ bool $noDefaultWhitelist = false
 bool $noVerify = false
 ```
 **Type:** `bool`
+
+
+
+### **node:**
+```php
+?string $node = null
+```
+**Type:** `?string`
+
+
+
+### **nodeUser:**
+```php
+?string $nodeUser = null
+```
+**Type:** `?string`
+
+
+
+### **nodePassword:**
+```php
+?string $nodePassword = null
+```
+**Type:** `?string`
+
+
+
+### **nodeCookie:**
+```php
+?string $nodeCookie = null
+```
+**Type:** `?string`
 
 
 

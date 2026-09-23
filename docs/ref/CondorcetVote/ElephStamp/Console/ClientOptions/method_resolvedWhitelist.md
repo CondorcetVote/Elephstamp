@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [ClientOptions](class_ClientOptions.md)
 # Method resolvedWhitelist()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L85)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L96)
 
 ```php
 public function ClientOptions->resolvedWhitelist( ): array

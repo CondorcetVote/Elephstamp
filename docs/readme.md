@@ -130,6 +130,7 @@
 | Class Name | Description |
 | ------------- | ------------- |
 | [AnchorVerification](ref/CondorcetVote/ElephStamp/Verify/AnchorVerification/class_AnchorVerification.md) | _One Bitcoin attestation checked against the block it names._ |
+| [BitcoinRpcBlockHeaderSource](ref/CondorcetVote/ElephStamp/Verify/BitcoinRpcBlockHeaderSource/class_BitcoinRpcBlockHeaderSource.md) | _Block headers from a Bitcoin node through its JSON-RPC interface: Bitcoin Core (or anything speaking the same protocol, such as a hosted RPC provider) answering getblockhash, getblockheader and getblo..._ |
 | [BlockHeader](ref/CondorcetVote/ElephStamp/Verify/BlockHeader/class_BlockHeader.md) | _The 80-byte header of a Bitcoin block, or the part of it verification needs._ |
 | [CrossCheckingBlockHeaderSource](ref/CondorcetVote/ElephStamp/Verify/CrossCheckingBlockHeaderSource/class_CrossCheckingBlockHeaderSource.md) | _Asks several sources and only answers when they all agree._ |
 | [EsploraBlockHeaderSource](ref/CondorcetVote/ElephStamp/Verify/EsploraBlockHeaderSource/class_EsploraBlockHeaderSource.md) | _Block headers from any server speaking the Esplora HTTP API: mempool.space, blockstream.info, or a self-hosted instance._ |
