@@ -1,15 +1,5 @@
 # TODO
 
-## Security
-
-- [ ] Widen the malformed-proof test corpus. The parser is already bounded
-      (`Timestamp::RECURSION_LIMIT` = 256, `Receipt::MAX_RECEIPT_BYTES` =
-      1 MB, `HttpCalendarClient::MAX_RESPONSE_BYTES` = 10 kB, varbytes caps
-      per operation), but only one test exercises the depth limit. Add a
-      corpus of hostile `.ots` files (max depth, max width, huge
-      append/prepend arguments, truncated streams, unknown tags) and
-      consider a lightweight fuzz run in CI to keep those guards honest.
-
 ## Library & CLI
 
 - [ ] `upgradeMany()`: poll several receipts in one call, batching requests

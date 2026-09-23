@@ -293,3 +293,15 @@ it('stops calling the other calendars upgradable once the proof is complete', fu
         ->toContain('confirmed in block 700000')
         ->not->toContain('pending, upgradable');
 });
+
+it('reports a hostile proof nested beyond the recursion limit as an error, without crashing', function (): void {
+    $path = makeTempPath();
+    $body = str_repeat("\x08", 10_000) . "\x00" . hex2bin('83dfe30d2ef90c8e') . "\x02\x01a";
+    file_put_contents($path, DetachedTimestampFile::HEADER_MAGIC . "\x01\x08" . str_repeat("\x00", 32) . $body);
+
+    $this->tester->run(['info', 'receipts' => [$path]]);
+
+    $this->tester->assertCommandFailed();
+
+    expect(unwrapped($this->tester->getDisplay()))->toContain('recursiondepthlimit');
+});
