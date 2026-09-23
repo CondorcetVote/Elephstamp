@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.3.0] — 2026-09-23
 
 ### Added
 
@@ -22,6 +22,9 @@
 - CLI: the *Block headers* line of the `verify` report reads "trusted for
   block headers only" and no longer calls the source a third party, since it
   may now be your own node.
+- CLI: `--json` is now a documented contract: the document is identical at
+  every verbosity and every hash in it is complete. The JSON samples in
+  `CLI.md` used to show abbreviated hashes the tool never actually produced.
 
 ## [1.2.0] — 2026-09-22
 
@@ -114,7 +117,8 @@ First release.
   captured in its `CalendarResponse` and can never abort a batch.
 - GitHub Actions CI and Dependabot configuration.
 
-[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/CondorcetVote/Elephstamp/releases/tag/v1.0.0

@@ -468,7 +468,7 @@ $node = new BitcoinRpcBlockHeaderSource('http://127.0.0.1:8332', user: 'user', p
 // …or from the .cookie file Bitcoin Core writes when rpcpassword is not set.
 $node = new BitcoinRpcBlockHeaderSource('http://127.0.0.1:8332', cookieFile: '/home/bitcoin/.bitcoin/.cookie');
 
-// A hosted provider (no third-party trust bounded here: it is a node you did not run).
+// A hosted provider: a node you did not run, so its operator is trusted like an explorer.
 $node = new BitcoinRpcBlockHeaderSource('https://rpc.example.com/v1/your-token');
 
 $client = new ElephStamp(blockHeaderSource: $node);
