@@ -3,7 +3,9 @@
 [![Packagist Version](https://img.shields.io/packagist/v/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
 [![Packagist Downloads](https://img.shields.io/packagist/dt/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
 [![Docker Pulls](https://img.shields.io/docker/pulls/julienboudry/elephstamp)](https://hub.docker.com/r/julienboudry/elephstamp)
-[![CI](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml)
+[![Tests](https://github.com/CondorcetVote/Elephstamp/actions/workflows/tests.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/tests.yml)
+[![Static analysis](https://github.com/CondorcetVote/Elephstamp/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/static-analysis.yml)
+[![Lint](https://github.com/CondorcetVote/Elephstamp/actions/workflows/lint.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/lint.yml)
 [![License](https://img.shields.io/packagist/l/condorcet-vote/elephstamp)](LICENSE)
 
 <p align="center">

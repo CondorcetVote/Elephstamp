@@ -1,4 +1,4 @@
-name: CI
+name: Tests
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  ci:
+  tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,9 +39,3 @@ jobs:
 
       - name: Tests
         run: composer test
-
-      - name: Static analysis
-        run: composer phpstan
-
-      - name: Code style
-        run: composer linter -- --dry-run --diff
