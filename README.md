@@ -309,6 +309,14 @@ proofs departs from the Python client on purpose.
 - **Made for scripts.** Documented exit codes (`2` means "not yet"), a stable
   `--json` document for `info`, `upgrade` and `verify`, several proofs per
   command.
+- **Batches all the way.** Like `ots stamp`, `stamp` binds several files
+  under one calendar submission. But `ots upgrade` and `ots verify` then
+  handle each proof on its own, asking the calendars and the node once per
+  file even when the proofs share their commitment and their block.
+  ElephStamp's `upgrade` and `verify` work on the whole list in one pass: a
+  calendar is asked once per commitment and each Bitcoin block header is
+  fetched once, so upgrading or verifying the proofs of a batch costs what a
+  single one does (`upgradeMany()` / `verifyMany()` in the library).
 - **Easy to install.** A PHAR, a Docker image or Composer.
 
 ### A real library

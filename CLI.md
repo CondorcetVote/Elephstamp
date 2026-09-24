@@ -44,7 +44,10 @@ option of one, with examples.
 ### Several proofs at once
 
 Every command that reads proofs accepts **several** `.ots` files at once
-(`proofs/*.ots` works) and reports each in turn.
+(`proofs/*.ots` works) and reports each in turn. `upgrade` and `verify` do
+the network work in one pass for all of them: a calendar is asked once per
+commitment, so the proofs of one `stamp` batch cost a single request per
+calendar, and each Bitcoin block named by the proofs is fetched once.
 
 ### Full and abbreviated hashes
 
@@ -239,7 +242,13 @@ proof then carries one attestation per branch (`info` lists them all,
 
 ### Several proofs
 
-With several proofs a summary closes the report:
+Several proofs are polled in one pass. A calendar is asked **once per
+commitment**: the proofs of one `stamp` batch all descend from the same
+commitment, so they cost a single request per calendar however many they
+are, while unrelated proofs simply add their own. The answers are then
+checked against the blockchain in one batch, fetching each block once. Each
+proof is still reported and saved on its own, and a summary closes the
+report:
 
 ```
  3 proofs: 2 complete, 1 still pending.
@@ -315,6 +324,10 @@ opens the report as a full-width banner:
 `-v` prints full merkle roots and the block hashes. Without an original file
 or digest, the banner says so: the proof itself is verified, not that it
 belongs to a given file.
+
+Several proofs are checked in one pass: the chain tip is fetched once, and
+each block once however many proofs name it, so the proofs of one `stamp`
+batch cost a single header. Each proof still gets its own banner and report.
 
 ### Verdicts
 

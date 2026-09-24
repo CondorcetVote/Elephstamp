@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Batch upgrades and verifications.** `ElephStamp::upgradeMany()` polls a
+  list of receipts in one pass, related or not, and returns one
+  `UpgradeReport` per receipt: a calendar is asked once per distinct
+  commitment, so the receipts of a `stampMany()` batch cost a single request
+  per calendar, and the answers are checked against the blockchain in one
+  batch. `ElephStamp::verifyMany()` and `Verifier::verifyMany()` do the same
+  for verification, with an optional file per receipt, fetching the chain
+  tip once and each block header once. See
+  [LIBRARY.md](LIBRARY.md#upgrading-several-receipts-at-once).
+
+### Changed
+
+- `elephstamp upgrade` and `elephstamp verify` handle several proofs in one
+  pass: one calendar request per commitment, one header fetch per block,
+  however many proofs share them. Reports, JSON output and exit codes are
+  unchanged.
+- `Verifier::checkAnchors()` (and so every upgrade and verification) fetches
+  a block header once per batch however many attestations name it, and does
+  not ask again for a block the source could not provide.
+
 ## [1.4.0] — 2026-09-24
 
 ### Added

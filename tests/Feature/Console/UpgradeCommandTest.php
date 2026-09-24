@@ -322,3 +322,31 @@ it('passes node settings to the client and requires --node for its companions', 
     $this->tester->assertCommandFailed();
     expect($this->tester->getDisplay())->toContain('--node-user, --node-password and --node-cookie need --node');
 });
+
+it('polls the calendar once for the proofs of one batch', function (): void {
+    $fake = new FakeCalendarClient;
+    $calendar = new Tests\Support\CountingCalendarClient($fake);
+    $blocks = new Tests\Support\CountingBlockHeaderSource($fake->blocks());
+    $factory = new FakeClientFactory($calendar, blocks: $fake->blocks(), headerSource: $blocks);
+    $application = new Application($factory);
+    $application->setAutoExit(false);
+    $tester = new ApplicationTester($application);
+
+    $receipts = $factory->create(new CondorcetVote\ElephStamp\Console\ClientOptions)->stampMany(FileToStamp::fromContent('one'), FileToStamp::fromContent('two'));
+    $paths = [$this->dir . '/one.ots', $this->dir . '/two.ots'];
+    $receipts[0]->saveToPath($paths[0]);
+    $receipts[1]->saveToPath($paths[1]);
+    $fake->confirmAll(812_345);
+
+    $tester->run(['upgrade', 'receipts' => $paths]);
+
+    $tester->assertCommandIsSuccessful();
+
+    expect($calendar->polls)->toHaveCount(1)
+        ->and($calendar->requests())->toHaveCount(1)
+        ->and($blocks->tipRequests)->toBe(1)
+        ->and($blocks->headerRequests)->toBe([812_345])
+        ->and($tester->getDisplay())->toContain('2 proofs: 2 complete')
+        ->and(Receipt::fromPath($paths[0])->bitcoinBlockHeight())->toBe(812_345)
+        ->and(Receipt::fromPath($paths[1])->bitcoinBlockHeight())->toBe(812_345);
+});

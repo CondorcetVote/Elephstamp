@@ -294,57 +294,118 @@ final class ElephStamp
      */
     public function upgradeWithReport(Receipt $receipt, bool $pollAll = false, bool $verify = true, int $requiredConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS): UpgradeReport
     {
+        return $this->upgradeMany([$receipt], $pollAll, $verify, $requiredConfirmations)[0];
+    }
+
+    /**
+     * Upgrade several receipts in one pass, related or not.
+     *
+     * Each receipt is polled and merged exactly as {@see upgradeWithReport()}
+     * does, and gets its own report, aligned with $receipts. The pass itself
+     * is shared: a calendar is asked once per distinct commitment, so the
+     * receipts of a {@see stampMany()} batch, which all descend from the
+     * same commitment, cost one request per calendar however many they are;
+     * and every Bitcoin attestation the calendars return is checked in a
+     * single batch, fetching the chain tip once and each block header once.
+     * Receipts that have nothing in common simply add their own requests.
+     *
+     * The receipts of a batch still in memory share their tree nodes, so an
+     * answer merged through one of them reaches its siblings too; each
+     * sibling then reports it as upgraded as well, since it did gain it in
+     * this pass.
+     *
+     * @param list<Receipt> $receipts
+     * @param bool          $pollAll               also poll the calendars still pending in an already complete receipt
+     * @param bool          $verify                check each calendar's Bitcoin attestations against the block header source before merging them
+     * @param int           $requiredConfirmations depth a block needs before its attestation is merged, when verifying
+     *
+     * @throws InvalidInputException if $requiredConfirmations is below one
+     *
+     * @return list<UpgradeReport> one per receipt, in the same order; empty for no receipts
+     */
+    public function upgradeMany(array $receipts, bool $pollAll = false, bool $verify = true, int $requiredConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS): array
+    {
         if ($requiredConfirmations < 1) {
             throw new InvalidInputException('requiredConfirmations must be at least 1');
         }
 
-        // A complete receipt has nothing left to poll for.
-        if ($receipt->isComplete() && !$pollAll) {
-            return new UpgradeReport([]);
-        }
-
+        /** @var array<int, array<int, CalendarUpgradeResult>> $results keyed by receipt, then by pending entry */
         $results = [];
+        /** @var array<int, array<int, array{node: Timestamp, msg: string, attestation: PendingAttestation}>> $toPoll keyed by receipt, then by pending entry */
         $toPoll = [];
-        $urls = [];
+        /** @var array<int, array<int, int>> $requestOf the request position each polled entry maps to */
+        $requestOf = [];
+        /** @var list<array{url: string, commitment: string}> $requests */
+        $requests = [];
+        /** @var array<string, int> $requestPositions */
+        $requestPositions = [];
 
-        // Only contact calendars whose URI is whitelisted: an untrusted `.ots`
-        // must not be able to point us at arbitrary hosts. The request goes to
-        // the whitelist's normalized URL, never to the raw URI from the proof.
-        foreach ($receipt->detachedTimestampFile()->timestamp->findPending() as $index => $entry) {
-            if ($entry['node']->hasBitcoinAttestation()) {
-                $results[$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Confirmed, blockHeight: self::lowestBlockHeight($entry['node']));
-            } elseif (($url = $this->upgradeWhitelist->resolve($entry['attestation']->uri)) !== null) {
-                $toPoll[$index] = $entry;
-                $urls[$index] = $url;
-            } else {
-                $results[$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Skipped);
+        foreach ($receipts as $r => $receipt) {
+            $results[$r] = [];
+            $toPoll[$r] = [];
+            $requestOf[$r] = [];
+
+            // A complete receipt has nothing left to poll for.
+            if ($receipt->isComplete() && !$pollAll) {
+                continue;
+            }
+
+            // Only contact calendars whose URI is whitelisted: an untrusted `.ots`
+            // must not be able to point us at arbitrary hosts. The request goes to
+            // the whitelist's normalized URL, never to the raw URI from the proof.
+            foreach ($receipt->detachedTimestampFile()->timestamp->findPending() as $index => $entry) {
+                if ($entry['node']->hasBitcoinAttestation()) {
+                    $results[$r][$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Confirmed, blockHeight: self::lowestBlockHeight($entry['node']));
+                } elseif (($url = $this->upgradeWhitelist->resolve($entry['attestation']->uri)) !== null) {
+                    // The same calendar asked about the same commitment, by
+                    // whichever receipts, is one request.
+                    $key = $url . "\0" . $entry['msg'];
+
+                    if (!isset($requestPositions[$key])) {
+                        $requestPositions[$key] = \count($requests);
+                        $requests[] = ['url' => $url, 'commitment' => $entry['msg']];
+                    }
+
+                    $toPoll[$r][$index] = $entry;
+                    $requestOf[$r][$index] = $requestPositions[$key];
+                } else {
+                    $results[$r][$index] = new CalendarUpgradeResult($entry['attestation']->uri, $entry['msg'], UpgradeOutcome::Skipped);
+                }
             }
         }
 
         $blockHeaderSource = null;
+        $responses = [];
+        $verifications = [];
+        $upgradedNodes = [];
 
-        if (!empty($toPoll)) {
-            $indexes = array_keys($toPoll);
-            $requests = array_map(
-                static fn(int $index): array => ['url' => $urls[$index], 'commitment' => $toPoll[$index]['msg']],
-                $indexes,
-            );
-
+        if ($requests !== []) {
             // Responses come back aligned with $requests; a calendar that is
             // unreachable or still has nothing simply yields no timestamp and
             // is reported as such, never aborting the pass.
             $responses = $this->calendarClient->getTimestamps($requests);
             $verifications = $verify ? $this->verifyResponses($responses, $requiredConfirmations, $blockHeaderSource) : array_fill(0, \count($responses), []);
-
-            foreach ($responses as $position => $response) {
-                $index = $indexes[$position];
-                $results[$index] = $this->mergeUpgradeResponse($toPoll[$index], $response, $verifications[$position], $requiredConfirmations);
-            }
         }
 
-        ksort($results);
+        $reports = [];
 
-        return new UpgradeReport(array_values($results), $blockHeaderSource);
+        foreach ($receipts as $r => $receipt) {
+            $checked = false;
+
+            foreach ($toPoll[$r] as $index => $entry) {
+                $position = $requestOf[$r][$index];
+                $checked = $checked || $verifications[$position] !== [];
+                $results[$r][$index] = $this->mergeUpgradeResponse($entry, $responses[$position], $verifications[$position], $requiredConfirmations, $upgradedNodes);
+            }
+
+            ksort($results[$r]);
+
+            // The source is only reported to the receipts whose answers it
+            // actually checked, so the report reads the same as alone.
+            $reports[] = new UpgradeReport(array_values($results[$r]), $checked ? $blockHeaderSource : null);
+        }
+
+        return $reports;
     }
 
     /**
@@ -392,8 +453,9 @@ final class ElephStamp
     /**
      * @param array{node: Timestamp, msg: string, attestation: PendingAttestation} $pending
      * @param list<AnchorVerification>                                              $verifications how the answer's Bitcoin attestations fared, empty when unchecked
+     * @param array<int, true>                                                      $upgradedNodes the nodes (by object id) already upgraded during this pass, so a receipt sharing one with a sibling still reports the gain
      */
-    private function mergeUpgradeResponse(array $pending, CalendarResponse $response, array $verifications, int $requiredConfirmations): CalendarUpgradeResult
+    private function mergeUpgradeResponse(array $pending, CalendarResponse $response, array $verifications, int $requiredConfirmations, array &$upgradedNodes): CalendarUpgradeResult
     {
         $url = $pending['attestation']->uri;
         $commitment = $pending['msg'];
@@ -425,10 +487,16 @@ final class ElephStamp
             return new CalendarUpgradeResult($url, $commitment, UpgradeOutcome::Rejected, $exception->getMessage(), verifications: $verifications);
         }
 
+        $nodeId = spl_object_id($pending['node']);
+
+        if ($changed) {
+            $upgradedNodes[$nodeId] = true;
+        }
+
         return new CalendarUpgradeResult(
             $url,
             $commitment,
-            $changed ? UpgradeOutcome::Upgraded : UpgradeOutcome::Unchanged,
+            isset($upgradedNodes[$nodeId]) ? UpgradeOutcome::Upgraded : UpgradeOutcome::Unchanged,
             blockHeight: self::lowestBlockHeight($pending['node']),
             verifications: $verifications,
         );
@@ -503,6 +571,25 @@ final class ElephStamp
     public function verify(Receipt $receipt, ?FileToStamp $file = null, int $requiredConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS): VerificationReport
     {
         return new Verifier($this->blockHeaderSource(), $requiredConfirmations)->verify($receipt, $file);
+    }
+
+    /**
+     * Check several receipts against the blockchain in one pass, related or
+     * not, fetching the chain tip once and each block header once however
+     * many receipts name it. Each receipt gets its own report, aligned with
+     * $receipts; see {@see Verifier::verifyMany()}.
+     *
+     * @param list<Receipt>                $receipts
+     * @param array<int, FileToStamp|null> $files                 the file each receipt should be the proof of, keyed like $receipts
+     * @param int                          $requiredConfirmations depth a block needs before its attestation counts as final
+     *
+     * @throws InvalidInputException if $files names an index with no receipt
+     *
+     * @return list<VerificationReport> one per receipt, in the same order; empty for no receipts
+     */
+    public function verifyMany(array $receipts, array $files = [], int $requiredConfirmations = Verifier::DEFAULT_REQUIRED_CONFIRMATIONS): array
+    {
+        return new Verifier($this->blockHeaderSource(), $requiredConfirmations)->verifyMany($receipts, $files);
     }
 
     /**

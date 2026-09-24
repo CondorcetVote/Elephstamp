@@ -8,7 +8,7 @@ use CondorcetVote\ElephStamp\Calendar\{CalendarClient, FakeCalendarClient};
 use CondorcetVote\ElephStamp\Console\{ClientFactory, ClientOptions};
 use CondorcetVote\ElephStamp\ElephStamp;
 use CondorcetVote\ElephStamp\Random\DeterministicRandomSource;
-use CondorcetVote\ElephStamp\Verify\FakeBlockHeaderSource;
+use CondorcetVote\ElephStamp\Verify\{BlockHeaderSource, FakeBlockHeaderSource};
 
 /**
  * Builds offline clients for the CLI tests and records the options it was given.
@@ -20,12 +20,14 @@ final class FakeClientFactory implements ClientFactory
     public readonly FakeBlockHeaderSource $blocks;
 
     /**
-     * @param FakeBlockHeaderSource|null $blocks the chain to verify against; by default the one a fake calendar mines into
+     * @param FakeBlockHeaderSource|null $blocks       the chain to verify against; by default the one a fake calendar mines into
+     * @param BlockHeaderSource|null     $headerSource what the clients actually consult, when not $blocks itself (e.g. a counting wrapper around it)
      */
     public function __construct(
         public readonly CalendarClient $calendar = new FakeCalendarClient,
         public readonly string $calendarUrl = ElephStamp::FAKE_CALENDAR_URL,
         ?FakeBlockHeaderSource $blocks = null,
+        private readonly ?BlockHeaderSource $headerSource = null,
     ) {
         $this->blocks = $blocks ?? ($calendar instanceof FakeCalendarClient ? $calendar->blocks() : new FakeBlockHeaderSource);
     }
@@ -42,7 +44,7 @@ final class FakeClientFactory implements ClientFactory
             hashOperation: $options->hashOperation,
             randomSource: new DeterministicRandomSource,
             upgradeWhitelist: $options->resolvedWhitelist(),
-            blockHeaderSource: $this->blocks,
+            blockHeaderSource: $this->headerSource ?? $this->blocks,
         );
     }
 }

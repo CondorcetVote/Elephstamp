@@ -145,9 +145,15 @@ scratch script and verify before committing.
 - `.ots` files produced/consumed must stay interoperable; the fixtures in
   `tests/fixtures/` are genuine reference-client output and must round-trip
   byte-for-byte.
-- `upgrade()` is a thin wrapper over `upgradeWithReport()`, which returns an
-  `Upgrade\UpgradeReport` describing what every calendar answered. Keep the
-  two in sync: any change to the polling logic goes in `upgradeWithReport()`.
+- `upgrade()` and `upgradeWithReport()` are thin wrappers over
+  `upgradeMany()`, which polls a list of receipts in one pass and returns one
+  `Upgrade\UpgradeReport` per receipt describing what every calendar
+  answered. Any change to the polling logic goes in `upgradeMany()`. It asks
+  a calendar once per distinct `(url, commitment)` pair and checks all
+  answers in one `Verifier::checkAnchors()` batch; keep that deduplication,
+  and keep the reports per receipt (receipts in a batch may be unrelated).
+  Likewise `verify()` is `Verifier::verifyMany()` on one receipt, and
+  `checkAnchors()` fetches each block header once per batch.
 - Verification recomputes everything locally and asks the source only for
   block headers. A source returning the raw 80-byte header goes through
   `BlockHeader::fromRawHeader()`, which recomputes the hash and checks the

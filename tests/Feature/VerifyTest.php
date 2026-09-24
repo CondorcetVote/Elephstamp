@@ -225,3 +225,92 @@ it('checks anchors in a batch through the verifier', function (): void {
         ->and($verifier->checkAnchors($receipt->bitcoinAnchors()))->toHaveCount(1)
         ->and($verifier->checkAnchors($receipt->bitcoinAnchors())[0]->outcome)->toBe(AnchorOutcome::Verified);
 });
+
+it('verifies several receipts in one pass, fetching each block once', function (): void {
+    $client = ElephStamp::fake();
+    $blocks = new Tests\Support\CountingBlockHeaderSource($client->fakeBlockSource());
+
+    $siblings = $client->stampMany(FileToStamp::fromContent('sibling A'), FileToStamp::fromContent('sibling B'));
+    $client->fakeCalendar()->confirmAll(800_000);
+    $client->upgradeMany($siblings);
+
+    $stranger = completedFakeReceipt($client, 'stranger', 800_020);
+
+    $reports = new Verifier($blocks)->verifyMany(
+        [$siblings[0], $siblings[1], $stranger],
+        [0 => FileToStamp::fromContent('sibling A'), 1 => FileToStamp::fromContent('not sibling B')],
+    );
+
+    expect($blocks->tipRequests)->toBe(1)
+        ->and($blocks->headerRequests)->toBe([800_000, 800_020])
+        ->and($reports)->toHaveCount(3)
+        ->and($reports[0]->verdict())->toBe(Verdict::Verified)
+        ->and($reports[0]->fileMatches)->toBeTrue()
+        ->and($reports[0]->attestingAnchor()?->blockHeight())->toBe(800_000)
+        // The wrong file fails this receipt alone; the chain check still passes for it.
+        ->and($reports[1]->verdict())->toBe(Verdict::Failed)
+        ->and($reports[1]->fileMatches)->toBeFalse()
+        ->and($reports[1]->anchors[0]->outcome)->toBe(AnchorOutcome::Verified)
+        ->and($reports[2]->verdict())->toBe(Verdict::Verified)
+        ->and($reports[2]->fileMatches)->toBeNull()
+        ->and($reports[2]->attestingAnchor()?->blockHeight())->toBe(800_020);
+});
+
+it('verifies several receipts through the client', function (): void {
+    $client = ElephStamp::fake();
+    $a = completedFakeReceipt($client, 'a', 800_000);
+    $b = completedFakeReceipt($client, 'b', 800_001);
+
+    $reports = $client->verifyMany([$a, $b], [1 => FileToStamp::fromContent('b')], requiredConfirmations: 1);
+
+    expect($reports)->toHaveCount(2)
+        ->and($reports[0]->isVerified())->toBeTrue()
+        ->and($reports[0]->fileMatches)->toBeNull()
+        ->and($reports[1]->isVerified())->toBeTrue()
+        ->and($reports[1]->fileMatches)->toBeTrue()
+        ->and($reports[1]->requiredConfirmations)->toBe(1);
+});
+
+it('asks for an unavailable block once per pass and keeps the other receipts verified', function (): void {
+    $client = ElephStamp::fake();
+    $blocks = new Tests\Support\CountingBlockHeaderSource($client->fakeBlockSource());
+
+    $known = completedFakeReceipt($client, 'known', 800_000);
+    $unknown = $client->stampMany(FileToStamp::fromContent('lost A'), FileToStamp::fromContent('lost B'));
+    $client->fakeCalendar()->confirmAll(800_050);
+    $client->upgradeMany($unknown);
+
+    // The chain forgets block 800050 but keeps its height as the tip.
+    $client->fakeBlockSource()->reset();
+    $client->fakeBlockSource()->anchor($known);
+    $client->fakeBlockSource()->setTipHeight(800_060);
+
+    $reports = new Verifier($blocks)->verifyMany([$unknown[0], $known, $unknown[1]]);
+
+    expect($blocks->headerRequests)->toBe([800_050, 800_000])
+        ->and($reports[0]->verdict())->toBe(Verdict::Inconclusive)
+        ->and($reports[0]->anchors[0]->outcome)->toBe(AnchorOutcome::BlockUnavailable)
+        ->and($reports[1]->verdict())->toBe(Verdict::Verified)
+        ->and($reports[2]->verdict())->toBe(Verdict::Inconclusive)
+        ->and($reports[2]->anchors[0]->error)->toBe($reports[0]->anchors[0]->error);
+});
+
+it('does not consult the source when no receipt has a Bitcoin attestation', function (): void {
+    $client = ElephStamp::fake();
+    $blocks = new Tests\Support\CountingBlockHeaderSource($client->fakeBlockSource());
+    $pending = $client->stamp(FileToStamp::fromContent('pending'));
+
+    $reports = new Verifier($blocks)->verifyMany([$pending]);
+
+    expect($reports[0]->verdict())->toBe(Verdict::Pending)
+        ->and($blocks->tipRequests)->toBe(0)
+        ->and(new Verifier($blocks)->verifyMany([]))->toBe([]);
+});
+
+it('refuses a file for a receipt that is not there', function (): void {
+    $client = ElephStamp::fake();
+    $receipt = $client->stamp(FileToStamp::fromContent('only one'));
+
+    expect(fn() => $client->verifyMany([$receipt], [1 => FileToStamp::fromContent('only one')]))
+        ->toThrow(InvalidInputException::class, 'No receipt at index 1');
+});

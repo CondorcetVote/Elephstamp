@@ -42,13 +42,61 @@ final class Verifier
      */
     public function verify(Receipt $receipt, ?FileToStamp $file = null): VerificationReport
     {
-        $fileMatches = $file === null ? null : hash_equals($receipt->fileDigest(), $file->digest($receipt->hashOperation()));
+        return $this->verifyMany([$receipt], [$file])[0];
+    }
 
-        return new VerificationReport(
-            $fileMatches,
-            $this->checkAnchors($receipt->bitcoinAnchors()),
-            $this->requiredConfirmations,
-            $this->source->describe(),
+    /**
+     * Verify several receipts in one pass, related or not.
+     *
+     * The chain tip is fetched once for the whole batch and each block header
+     * once, however many receipts name it: receipts stamped together and
+     * confirmed in the same block cost a single header, while unrelated
+     * receipts simply add theirs. Every receipt still gets its own report,
+     * aligned with $receipts.
+     *
+     * Never throws for a source failure: the affected attestations are
+     * reported as {@see AnchorOutcome::BlockUnavailable}.
+     *
+     * @param list<Receipt>                $receipts
+     * @param array<int, FileToStamp|null> $files    the file each receipt should be the proof of, keyed like $receipts; a missing or null entry only checks the proof itself
+     *
+     * @throws InvalidInputException if $files names an index with no receipt
+     *
+     * @return list<VerificationReport> one per receipt, in the same order
+     */
+    public function verifyMany(array $receipts, array $files = []): array
+    {
+        foreach (array_keys($files) as $index) {
+            if (!isset($receipts[$index])) {
+                throw new InvalidInputException(\sprintf('No receipt at index %d for the file given there', $index));
+            }
+        }
+
+        $fileMatches = [];
+        $anchors = [];
+        $owners = [];
+
+        foreach ($receipts as $index => $receipt) {
+            $file = $files[$index] ?? null;
+            $fileMatches[$index] = $file === null ? null : hash_equals($receipt->fileDigest(), $file->digest($receipt->hashOperation()));
+
+            foreach ($receipt->bitcoinAnchors() as $anchor) {
+                $anchors[] = $anchor;
+                $owners[] = $index;
+            }
+        }
+
+        $verifications = array_fill(0, \count($receipts), []);
+
+        foreach ($this->checkAnchors($anchors) as $position => $verification) {
+            $verifications[$owners[$position]][] = $verification;
+        }
+
+        $source = $this->source->describe();
+
+        return array_map(
+            fn(int $index): VerificationReport => new VerificationReport($fileMatches[$index], $verifications[$index], $this->requiredConfirmations, $source),
+            array_keys($receipts),
         );
     }
 
@@ -57,9 +105,11 @@ final class Verifier
      * proof they come from: a receipt, or a calendar's answer about to be
      * merged into one.
      *
-     * The chain tip is fetched once for the whole batch, then one header per
-     * attestation. Never throws for a source failure: the affected
-     * attestations are reported as {@see AnchorOutcome::BlockUnavailable}.
+     * The chain tip is fetched once for the whole batch, and each block
+     * header once however many attestations name it (an unavailable block is
+     * not asked for again within the batch either). Never throws for a
+     * source failure: the affected attestations are reported as
+     * {@see AnchorOutcome::BlockUnavailable}.
      *
      * @param list<BitcoinAnchor> $anchors
      *
@@ -79,19 +129,39 @@ final class Verifier
             return array_map(static fn(BitcoinAnchor $anchor): AnchorVerification => new AnchorVerification($anchor, AnchorOutcome::BlockUnavailable, error: $exception->getMessage()), $anchors);
         }
 
-        return array_map(fn(BitcoinAnchor $anchor): AnchorVerification => $this->check($anchor, $tip), $anchors);
+        $headers = [];
+        $verifications = [];
+
+        foreach ($anchors as $anchor) {
+            $verifications[] = $this->check($anchor, $tip, $headers);
+        }
+
+        return $verifications;
     }
 
-    private function check(BitcoinAnchor $anchor, int $tip): AnchorVerification
+    /**
+     * @param array<int, BlockHeader|BlockSourceException> $headers what the source answered for each height already asked in this batch
+     */
+    private function check(BitcoinAnchor $anchor, int $tip, array &$headers): AnchorVerification
     {
         if ($anchor->merkleRoot === null) {
             return new AnchorVerification($anchor, AnchorOutcome::NotComputable);
         }
 
-        try {
-            $header = $this->source->blockHeader($anchor->blockHeight());
-        } catch (BlockSourceException $exception) {
-            return new AnchorVerification($anchor, AnchorOutcome::BlockUnavailable, error: $exception->getMessage());
+        $height = $anchor->blockHeight();
+
+        if (!\array_key_exists($height, $headers)) {
+            try {
+                $headers[$height] = $this->source->blockHeader($height);
+            } catch (BlockSourceException $exception) {
+                $headers[$height] = $exception;
+            }
+        }
+
+        $header = $headers[$height];
+
+        if ($header instanceof BlockSourceException) {
+            return new AnchorVerification($anchor, AnchorOutcome::BlockUnavailable, error: $header->getMessage());
         }
 
         $confirmations = max(0, $tip - $anchor->blockHeight() + 1);

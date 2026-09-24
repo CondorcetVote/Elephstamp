@@ -30,6 +30,9 @@ use SensitiveParameter;
         <comment>contract.pdf.ots</comment>), or given with <comment>--file</comment> or as a <comment>--digest</comment>. Without it, only the
         proof itself is checked, not that it is the proof of a particular file.
 
+        Several proofs are checked in one pass: the chain tip is fetched once, and each
+        block once however many proofs name it.
+
         An explorer is a third party you trust for block headers. Its raw header is
         parsed locally and its proof of work checked, and several sources can be
         required to agree with repeated <comment>--explorer</comment> options, or <comment>--node</comment> together with
@@ -138,22 +141,46 @@ final class VerifyCommand
         $exitCode = Command::SUCCESS;
         $documents = [];
 
-        foreach ($receipts as $path) {
+        // Every proof is read first so the blockchain is consulted in one
+        // pass: the chain tip once, and each block once however many proofs
+        // name it.
+        /** @var array<int, Receipt> $loaded keyed by argument position */
+        $loaded = [];
+        /** @var array<int, FileToStamp|null> $subjects keyed by argument position */
+        $subjects = [];
+        /** @var array<int, string|null> $originals keyed by argument position */
+        $originals = [];
+        /** @var array<int, string> $errors keyed by argument position */
+        $errors = [];
+
+        foreach ($receipts as $position => $path) {
             try {
                 $receipt = Receipt::fromPath($path);
-                [$original, $subject] = self::subject($path, $receipt->hashOperation(), $file, $digest);
-                $report = $client->verify($receipt, $subject, $minConfirmations);
+                [$originals[$position], $subjects[$position]] = self::subject($path, $receipt->hashOperation(), $file, $digest);
+                $loaded[$position] = $receipt;
             } catch (ElephStampException $exception) {
+                $errors[$position] = $exception->getMessage();
+            }
+        }
+
+        $reports = array_combine(array_keys($loaded), $client->verifyMany(array_values($loaded), array_values(array_intersect_key($subjects, $loaded)), $minConfirmations));
+
+        foreach ($receipts as $position => $path) {
+            if (isset($errors[$position])) {
                 $exitCode = Command::FAILURE;
 
                 if ($json) {
-                    $documents[] = ['receipt' => $path, 'error' => $exception->getMessage()];
+                    $documents[] = ['receipt' => $path, 'error' => $errors[$position]];
                 } else {
-                    $io->error(\sprintf('%s: %s', $path, $exception->getMessage()));
+                    $io->error(\sprintf('%s: %s', $path, $errors[$position]));
                 }
 
                 continue;
             }
+
+            $receipt = $loaded[$position];
+            $report = $reports[$position];
+            $original = $originals[$position];
 
             $exitCode = max($exitCode, self::exitCode($report->verdict()));
 

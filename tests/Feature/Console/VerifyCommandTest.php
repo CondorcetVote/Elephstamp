@@ -260,3 +260,30 @@ it('passes node settings to the client and requires --node for its companions', 
 
     expect($this->tester->getDisplay())->toContain('--node-user, --node-password and --node-cookie need --node');
 });
+
+it('checks several proofs in one pass and fetches each block once', function (): void {
+    $blocks = new Tests\Support\CountingBlockHeaderSource($this->factory->blocks);
+    $factory = new FakeClientFactory($this->factory->calendar, blocks: $this->factory->blocks, headerSource: $blocks);
+    $application = new Application($factory);
+    $application->setAutoExit(false);
+    $tester = new ApplicationTester($application);
+
+    $client = $factory->create(new CondorcetVote\ElephStamp\Console\ClientOptions);
+    $siblings = $client->stampMany(FileToStamp::fromContent('one'), FileToStamp::fromContent('two'));
+    $this->factory->calendar->confirmAll(800_010);
+    $client->upgradeMany($siblings);
+    $paths = [$this->dir . '/one.ots', $this->dir . '/two.ots', $this->path];
+    $siblings[0]->saveToPath($paths[0]);
+    $siblings[1]->saveToPath($paths[1]);
+
+    // Only count the command, not the upgrade that completed the siblings.
+    $blocks->tipRequests = 0;
+    $blocks->headerRequests = [];
+
+    $status = $tester->run(['verify', 'receipts' => $paths, '--min-confirmations' => 1]);
+
+    expect($status)->toBe(Symfony\Component\Console\Command\Command::SUCCESS)
+        ->and($blocks->tipRequests)->toBe(1)
+        ->and($blocks->headerRequests)->toBe([800_010, 800_000])
+        ->and(substr_count($tester->getDisplay(), 'verified'))->toBeGreaterThanOrEqual(3);
+});

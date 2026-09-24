@@ -36,6 +36,10 @@ use SensitiveParameter;
         A proof that gained new attestations is written back in place (or to
         <comment>--output</comment> for a single proof). Use <comment>--dry-run</comment> to poll without writing.
 
+        Several proofs are polled in one pass: a calendar is asked once per commitment,
+        so the proofs of one <comment>stamp</comment> batch cost a single request per calendar, and
+        each Bitcoin block named in the answers is fetched once.
+
         One Bitcoin attestation makes a proof complete, so a complete proof is normally
         left alone. Pass <comment>--all</comment> to keep polling the calendars it is still pending
         on and collect every attestation.
@@ -151,39 +155,74 @@ final class UpgradeCommand
         $pending = 0;
         $documents = [];
 
-        foreach ($receipts as $path) {
-            $target = $outputPath ?? $path;
+        // Every proof is read first so the calendars are polled in one pass:
+        // a calendar is asked once per commitment however many proofs share
+        // it, and the answers are checked against the blockchain in one batch.
+        /** @var array<int, Receipt> $loaded keyed by argument position */
+        $loaded = [];
+        /** @var array<int, bool> $wasComplete keyed by argument position */
+        $wasComplete = [];
+        /** @var array<int, string> $errors keyed by argument position */
+        $errors = [];
 
+        foreach ($receipts as $position => $path) {
             try {
-                $receipt = Receipt::fromPath($path);
-                $wasComplete = $receipt->isComplete();
-                $report = $client->upgradeWithReport($receipt, pollAll: $all, verify: !$noVerify, requiredConfirmations: $minConfirmations);
-                $saved = false;
-
-                if ($report->changed() && !$dryRun) {
-                    $receipt->saveToPath($target);
-                    $saved = true;
-                }
+                $loaded[$position] = Receipt::fromPath($path);
+                $wasComplete[$position] = $loaded[$position]->isComplete();
             } catch (ElephStampException $exception) {
+                $errors[$position] = $exception->getMessage();
+            }
+        }
+
+        /** @var array<int, UpgradeReport> $reports keyed by argument position */
+        $reports = [];
+
+        try {
+            $reports = array_combine(array_keys($loaded), $client->upgradeMany(array_values($loaded), pollAll: $all, verify: !$noVerify, requiredConfirmations: $minConfirmations));
+        } catch (ElephStampException $exception) {
+            foreach (array_keys($loaded) as $position) {
+                $errors[$position] = $exception->getMessage();
+            }
+        }
+
+        foreach ($receipts as $position => $path) {
+            $target = $outputPath ?? $path;
+            $saved = false;
+
+            if (!isset($errors[$position])) {
+                try {
+                    if ($reports[$position]->changed() && !$dryRun) {
+                        $loaded[$position]->saveToPath($target);
+                        $saved = true;
+                    }
+                } catch (ElephStampException $exception) {
+                    $errors[$position] = $exception->getMessage();
+                }
+            }
+
+            if (isset($errors[$position])) {
                 ++$failed;
 
                 if ($json) {
-                    $documents[] = ['receipt' => $path, 'error' => $exception->getMessage()];
+                    $documents[] = ['receipt' => $path, 'error' => $errors[$position]];
                 } else {
-                    $io->error(\sprintf('%s: %s', $path, $exception->getMessage()));
+                    $io->error(\sprintf('%s: %s', $path, $errors[$position]));
                 }
 
                 continue;
             }
+
+            $receipt = $loaded[$position];
+            $report = $reports[$position];
 
             if ($receipt->isPending()) {
                 ++$pending;
             }
 
             if ($json) {
-                $documents[] = self::toArray($path, $receipt, $report, $wasComplete, $saved ? $target : null);
+                $documents[] = self::toArray($path, $receipt, $report, $wasComplete[$position], $saved ? $target : null);
             } else {
-                $this->render($io, $output, $path, $receipt, $report, $wasComplete, $all, $saved, $dryRun, $target);
+                $this->render($io, $output, $path, $receipt, $report, $wasComplete[$position], $all, $saved, $dryRun, $target);
             }
         }
 

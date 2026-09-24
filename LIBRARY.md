@@ -19,6 +19,7 @@ This document covers the PHP API. For the `elephstamp` command-line tool, see
   - [What each calendar answered](#what-each-calendar-answered)
   - [Checking answers before merging them](#checking-answers-before-merging-them)
   - [Collecting every calendar's attestation](#collecting-every-calendars-attestation)
+  - [Upgrading several receipts at once](#upgrading-several-receipts-at-once)
 - [Reading a receipt](#reading-a-receipt)
   - [Saving](#saving)
   - [Locating the Bitcoin transaction](#locating-the-bitcoin-transaction)
@@ -26,6 +27,7 @@ This document covers the PHP API. For the `elephstamp` command-line tool, see
 - [Verifying against the blockchain](#verifying-against-the-blockchain)
   - [Verify a proof](#verify-a-proof)
   - [Reading the report](#reading-the-report)
+  - [Verifying several proofs at once](#verifying-several-proofs-at-once)
   - [Choosing where block headers come from](#choosing-where-block-headers-come-from)
   - [Verifying against your own Bitcoin node](#verifying-against-your-own-bitcoin-node)
 - [Testing: fake mode](#testing-fake-mode)
@@ -139,16 +141,18 @@ foreach ($receipts as $i => $receipt) {
 
 #### Upgrading each receipt
 
-Each receipt is a standalone `.ots`: it has to be upgraded and re-saved
-individually, exactly like a single stamp. But they all descend from the same
-commitment, so they turn complete at the same block:
+Each receipt is a standalone `.ots` that has to be saved individually, but
+they all descend from the same commitment, so they turn complete at the same
+block. Upgrade them together with
+[`upgradeMany()`](#upgrading-several-receipts-at-once): the calendars are
+asked once about that shared commitment, however many receipts there are.
 
 ```php
-foreach ($paths as $path) {
-    $receipt = Receipt::fromPath($path . '.ots');
+$receipts = array_map(static fn(string $path): Receipt => Receipt::fromPath($path . '.ots'), $paths);
 
-    if ($client->upgrade($receipt)) {
-        $receipt->save();
+foreach ($client->upgradeMany($receipts) as $i => $report) {
+    if ($report->changed()) {
+        $receipts[$i]->save();
     }
 }
 ```
@@ -374,6 +378,41 @@ The `.ots` format is a tree, so a receipt holding several Bitcoin
 attestations stays perfectly interoperable; `bitcoinBlockHeight()` reports the
 lowest of them.
 
+### Upgrading several receipts at once
+
+`upgradeMany()` runs one polling pass over a list of receipts and returns one
+`UpgradeReport` per receipt, in the same order. Each receipt is polled,
+checked and merged exactly as `upgradeWithReport()` would do alone; only the
+network work is shared:
+
+- a calendar is asked **once per distinct commitment**, so the receipts of a
+  `stampMany()` batch cost a single request per calendar however many they
+  are, while unrelated receipts simply add their own requests;
+- the calendars' answers are checked against the blockchain in **one batch**:
+  the chain tip is fetched once, and each block header once however many
+  answers name it.
+
+```php
+$receipts = array_map(Receipt::fromPath(...), glob('proofs/*.ots'));
+
+foreach ($client->upgradeMany($receipts, pollAll: false, verify: true) as $i => $report) {
+    if ($report->changed()) {
+        $receipts[$i]->save();
+    }
+}
+```
+
+The receipts need not have anything in common: a mix of batches, single
+stamps and already complete proofs is fine. A complete receipt gets an empty
+report unless `pollAll` is set, exactly as alone, and a report only names a
+`blockHeaderSource` when one of that receipt's own answers was checked.
+`upgradeMany([])` returns `[]` without touching the network.
+
+Receipts of a batch that are still in memory (not reloaded from disk) share
+their tree nodes, so an answer merged through one of them reaches its
+siblings; each sibling then reports it as `Upgraded` too, and `changed()` is
+true for all of them.
+
 ## Reading a receipt
 
 ### Accessors
@@ -534,10 +573,36 @@ if ($report->isVerified() && $report->mismatches() !== []) {
 }
 ```
 
+### Verifying several proofs at once
+
+`verifyMany()` checks a list of receipts in one pass and returns one
+`VerificationReport` per receipt, in the same order. The chain tip is fetched
+once, and each block header once however many receipts name it: the proofs
+of a `stampMany()` batch, confirmed in the same block, cost a single header,
+while unrelated proofs add theirs. The optional second argument gives the
+file a receipt should be the proof of, keyed like the receipts; a missing or
+null entry only checks that proof itself.
+
+```php
+$receipts = array_map(Receipt::fromPath(...), glob('proofs/*.ots'));
+
+$reports = $client->verifyMany($receipts, [0 => FileToStamp::fromPath('proofs/a.pdf')]);
+
+foreach ($reports as $i => $report) {
+    echo $receipts[$i]->fileDigestHex(), ': ', $report->verdict()->name, "\n";
+}
+```
+
+A file given for an index with no receipt throws `InvalidInputException`.
+`verifyMany([])` returns `[]`, and a list of pending receipts consults no
+source at all.
+
 #### Checking anchors directly
 
 `Verifier::checkAnchors()` runs the same check on any list of `BitcoinAnchor`,
-fetching the chain tip once; it is what `upgrade()` uses on calendar answers.
+fetching the chain tip once and each block once; it is what `upgrade()` uses
+on calendar answers, and `Verifier::verifyMany()` is the batch behind
+`verifyMany()`.
 
 ### Choosing where block headers come from
 
