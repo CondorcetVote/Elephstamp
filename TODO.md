@@ -10,7 +10,7 @@
 
 ## Distribution (CI)
 
-- [ ] Build a `elephstamp.phar` on every release (GitHub Actions job on
+- [x] Build a `elephstamp.phar` on every release (GitHub Actions job on
       tag push, e.g. `box`), attach it to the GitHub release, and sign it or
       publish its checksum. Document the install path in `CLI.md`.
 - [ ] Publish a Docker image exposing the CLI (`docker run ... elephstamp

@@ -67,6 +67,10 @@ tool, install it globally instead:
 composer global require condorcet-vote/elephstamp
 ```
 
+or download `elephstamp.phar` from the
+[latest release](https://github.com/CondorcetVote/Elephstamp/releases/latest)
+(see [CLI.md](CLI.md#installation)).
+
 ## In thirty seconds
 
 From PHP:

@@ -1,0 +1,71 @@
+name: Release PHAR
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build and attach the PHAR to (e.g. v1.4.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  phar:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # upload the release assets
+      id-token: write # sign the build provenance attestation
+      attestations: write
+
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.5'
+          extensions: mbstring
+          coverage: none
+          tools: box:4.7.0
+
+      # The version shown by `elephstamp --version` comes from Composer's
+      # installed.php, which records the root version given here.
+      - name: Install production dependencies
+        run: composer install --no-dev --prefer-dist --no-progress --no-interaction --optimize-autoloader
+        env:
+          COMPOSER_ROOT_VERSION: ${{ env.TAG }}
+
+      - name: Compile PHAR
+        run: box compile
+
+      - name: Smoke test
+        run: |
+          test "$(php build/elephstamp.phar --version)" = "ElephStamp ${TAG}"
+          php build/elephstamp.phar calendars
+          php build/elephstamp.phar info tests/fixtures/hello-world.txt.ots
+          php build/elephstamp.phar tree tests/fixtures/hello-world.txt.ots > /dev/null
+
+      - name: Checksum
+        working-directory: build
+        run: sha256sum elephstamp.phar | tee elephstamp.phar.sha256
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: build/elephstamp.phar
+
+      - name: Upload to the release
+        run: gh release upload "$TAG" build/elephstamp.phar build/elephstamp.phar.sha256 --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

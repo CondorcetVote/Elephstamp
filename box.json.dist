@@ -1,0 +1,4 @@
+{
+    "$schema": "https://raw.githubusercontent.com/box-project/box/main/res/schema.json",
+    "output": "build/elephstamp.phar"
+}

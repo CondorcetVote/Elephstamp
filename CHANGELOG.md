@@ -4,6 +4,9 @@
 
 ### Added
 
+- A standalone `elephstamp.phar` is attached to every GitHub release, with
+  its SHA-256 checksum and a signed build provenance attestation
+  (`gh attestation verify`). See [CLI.md](CLI.md#installation).
 - `elephstamp stamp --hash=sha256|sha1|ripemd160|keccak256` chooses the
   algorithm a proof commits to the file with, for files as well as for
   `--digest`, whose expected length follows. The default stays SHA-256; the

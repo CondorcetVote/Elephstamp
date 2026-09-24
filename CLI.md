@@ -24,7 +24,27 @@ calendar server has done with them. For the PHP API, see
 
 ## Installation
 
-As a standalone tool:
+As a standalone PHAR, attached to every
+[GitHub release](https://github.com/CondorcetVote/Elephstamp/releases):
+
+```bash
+curl -LO https://github.com/CondorcetVote/Elephstamp/releases/latest/download/elephstamp.phar
+curl -LO https://github.com/CondorcetVote/Elephstamp/releases/latest/download/elephstamp.phar.sha256
+sha256sum -c elephstamp.phar.sha256
+chmod +x elephstamp.phar
+sudo mv elephstamp.phar /usr/local/bin/elephstamp
+elephstamp --help
+```
+
+Each PHAR is built by the release workflow from the tagged source, and comes
+with a signed build provenance attestation. With the GitHub CLI, you can check
+that the file is the one that workflow produced:
+
+```bash
+gh attestation verify elephstamp.phar --repo CondorcetVote/Elephstamp
+```
+
+With Composer, as a global tool:
 
 ```bash
 composer global require condorcet-vote/elephstamp
