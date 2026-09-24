@@ -56,7 +56,8 @@
             "/box.json.dist",
             "/Dockerfile",
             "/DOCKERHUB.md",
-            "/.dockerignore"
+            "/.dockerignore",
+            "/elephstamp-logo.png"
         ]
     },
     "scripts": {

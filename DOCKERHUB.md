@@ -1,5 +1,9 @@
 # ElephStamp
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/CondorcetVote/Elephstamp/main/elephstamp-logo.png" alt="ElephStamp logo: an elephant notary with a quill and spectacles, holding a rubber stamp" width="280">
+</p>
+
 **Prove that a file existed at a given time, anchored forever in the Bitcoin
 blockchain.** No account, no fee, no trusted third party: just a small `.ots`
 proof next to your file, which anyone can check independently.

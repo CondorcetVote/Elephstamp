@@ -1,5 +1,9 @@
 # ElephStamp
 
+<p align="center">
+  <img src="elephstamp-logo.png" alt="ElephStamp logo: an elephant notary with a quill and spectacles, holding a rubber stamp" width="280">
+</p>
+
 [![Packagist Version](https://img.shields.io/packagist/v/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
 [![Packagist Downloads](https://img.shields.io/packagist/dt/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
 [![CI](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml)
