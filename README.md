@@ -1,13 +1,14 @@
 # ElephStamp
 
+[![Packagist Version](https://img.shields.io/packagist/v/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
+[![Packagist Downloads](https://img.shields.io/packagist/dt/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
+[![Docker Pulls](https://img.shields.io/docker/pulls/julienboudry/elephstamp)](https://hub.docker.com/r/julienboudry/elephstamp)
+[![CI](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml)
+[![License](https://img.shields.io/packagist/l/condorcet-vote/elephstamp)](LICENSE)
+
 <p align="center">
   <img src="elephstamp-logo.png" alt="ElephStamp logo: an elephant notary with a quill and spectacles, holding a rubber stamp" width="280">
 </p>
-
-[![Packagist Version](https://img.shields.io/packagist/v/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
-[![Packagist Downloads](https://img.shields.io/packagist/dt/condorcet-vote/elephstamp)](https://packagist.org/packages/condorcet-vote/elephstamp)
-[![CI](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml/badge.svg)](https://github.com/CondorcetVote/Elephstamp/actions/workflows/ci.yml)
-[![License](https://img.shields.io/packagist/l/condorcet-vote/elephstamp)](LICENSE)
 
 **Prove that a file existed at a given time, anchored in the Bitcoin
 blockchain.** ElephStamp is a PHP library and a command-line tool for
