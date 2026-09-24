@@ -58,6 +58,12 @@ Hand-written documentation is split in five files at the repository root.
   exit code MUST be reflected here, including the sample outputs when they
   no longer match.
 
+`DOCKERHUB.md` is the Docker Hub overview of the image, synced by the release
+workflow: a selling presentation of the project (pitch, highlights, one
+simple example, the image's tags, platforms and provenance) that sends
+readers to GitHub for details, with absolute URLs only, since relative links
+do not resolve on Docker Hub. Update it when the image's usage, tags or platforms change.
+
 In these files, give every sub-part a real Markdown heading (`###`, `####`,
 …) rather than a bold line or a plain-text label, so the outline and the
 anchors stay navigable.
@@ -65,9 +71,11 @@ anchors stay navigable.
   style. Anything a consumer of the library or the CLI would notice goes under
   the unreleased version at the top (`### Added` / `### Changed` / `### Fixed`
   / `### Removed`), in the same change set as the code. Written for users, not
-  for maintainers: skip lint, internal refactors and test-only changes. Never
-  date or renumber a version, and never edit an already released section — the
-  maintainer cuts releases.
+  for maintainers: skip lint, internal refactors, test-only changes and
+  cosmetic CI or presentation tweaks (e.g. the Docker Hub overview, workflow
+  housekeeping). Structural distribution changes, such as a new release
+  channel or platform, do belong there. Never date or renumber a version,
+  and never edit an already released section — the maintainer cuts releases.
 
 Treat these files as part of the API: out-of-date docs are a bug. Public
 examples must actually run as written — when in doubt, copy them into a

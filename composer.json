@@ -55,6 +55,7 @@
             "/AGENTS.md",
             "/box.json.dist",
             "/Dockerfile",
+            "/DOCKERHUB.md",
             "/.dockerignore"
         ]
     },

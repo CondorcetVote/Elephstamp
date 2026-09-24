@@ -160,3 +160,14 @@ jobs:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+      # Like the floating tags, the Docker Hub overview only follows the newest
+      # release. The token needs the read/write/delete scope for this.
+      - name: Sync the Docker Hub overview
+        if: env.FLOATING == 'true'
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: julienboudry/elephstamp
+          readme-filepath: ./DOCKERHUB.md

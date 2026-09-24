@@ -19,8 +19,9 @@ Its `.ots` proofs are byte-for-byte interoperable with the reference
   blockchain before it is merged into your proof.
 - **More informative.** Readable reports say what every calendar did, which
   block and transaction carry your proof, and why a proof is still pending.
-- **Friendlier.** Verify without running a Bitcoin node, stamp many files in
-  one go, script it with documented exit codes and `--json`.
+- **Friendlier.** Verify with your own Bitcoin node or, when you do not run
+  one, through public explorers; stamp many files in one go; script it with
+  documented exit codes and `--json`.
 - **A real library.** A typed, object-oriented PHP API for the whole
   lifecycle, with a built-in fake mode for your own test suite.
 
@@ -293,12 +294,13 @@ proofs departs from the Python client on purpose.
 
 ### Friendlier
 
-- **No Bitcoin node required.** `ots verify` needs a Bitcoin Core RPC;
-  ElephStamp asks mempool.space (or blockstream.info, or any Esplora
-  instance, several of them cross-checked) for the raw block header and
-  checks its proof of work locally, so the explorer is trusted only for the
-  header's existence. Your own node is supported too (`--node`), pruned or
-  not, alone or cross-checked with the explorers.
+- **Your own Bitcoin node is optional.** `ots verify` requires a Bitcoin Core
+  RPC. ElephStamp verifies against your node too (`--node`), pruned or not,
+  which remains the way to trust nobody else. When you do not run one, it asks
+  mempool.space (or blockstream.info, or any Esplora instance, several of
+  them cross-checked) for the raw block header and checks its proof of work
+  locally, so the explorer is trusted only for the header's existence. A
+  convenience, with bounded trust, not a substitute for your own node.
 - **Made for scripts.** Documented exit codes (`2` means "not yet"), a stable
   `--json` document for `info`, `upgrade` and `verify`, several proofs per
   command.
