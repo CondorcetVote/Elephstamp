@@ -37,18 +37,30 @@ round-trip tests against real fixtures).
 
 ## Documentation
 
-Hand-written documentation is split in four files at the repository root.
+Hand-written documentation is split in five files at the repository root.
 **Always keep them up to date**, in the same change set as the code:
 
-- `README.md` — short entry point: pitch, scope, requirements, installation,
-  a thirty-second example, and links to the two guides. Keep it short; details
-  belong in the guides.
-- `LIBRARY.md` — the PHP API guide. Every change to a public API surface (new
-  method, new class, renamed method, changed signature, new exception type,
-  new runtime requirement, new behaviour) MUST be reflected here.
-- `CLI.md` — the `elephstamp` command guide. Every new command, option, output
-  change, JSON field or exit code MUST be reflected here, including the
-  sample outputs when they no longer match.
+- `README.md` — entry point for a newcomer: pitch (including what ElephStamp
+  does better than the reference client), requirements, the library's
+  Composer installation, the three ways to install the CLI (one line each,
+  details in `CLI-INSTALL.md`), a quick tour of the CLI and of the library,
+  scope, and the differences from the reference client. Keep it an overview;
+  details belong in the guides.
+- `CLI-INSTALL.md` — installing the `elephstamp` command: PHAR, Docker image,
+  Composer, shell completion. Every change to a distribution channel (new
+  image tag scheme, new platform, new checksum or attestation) goes here.
+- `LIBRARY.md` — the PHP API guide: a one-line Composer installation (the
+  same as the README's), then usage. Every change to a public API surface
+  (new method, new class, renamed method, changed signature, new exception
+  type, new runtime requirement, new behaviour) MUST be reflected here.
+- `CLI.md` — the `elephstamp` command guide, usage only (installation is in
+  `CLI-INSTALL.md`). Every new command, option, output change, JSON field or
+  exit code MUST be reflected here, including the sample outputs when they
+  no longer match.
+
+In these files, give every sub-part a real Markdown heading (`###`, `####`,
+…) rather than a bold line or a plain-text label, so the outline and the
+anchors stay navigable.
 - `CHANGELOG.md` — the release history, newest first, in the Keep a Changelog
   style. Anything a consumer of the library or the CLI would notice goes under
   the unreleased version at the top (`### Added` / `### Changed` / `### Fixed`
@@ -67,7 +79,7 @@ scratch script and verify before committing.
 - Do **not** put project instructions inside `.github/` — they belong in this file.
 - The generated API docs and all git commits are handled by the maintainer. Do
   **not** run `composer document`, do **not** commit, tag, or push. Keep the
-  four documentation files current, but leave `docs/` and version control to
+  five documentation files current, but leave `docs/` and version control to
   the maintainer.
 
 ## Scope of this library

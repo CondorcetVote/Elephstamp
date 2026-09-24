@@ -18,6 +18,9 @@
         "symfony/console": "^8.1",
         "kornrunner/keccak": "^1.1"
     },
+    "suggest": {
+        "ext-curl": "Recommended: faster concurrent requests to calendars, block explorers and nodes, with HTTP/2. Without it, the Symfony HTTP client falls back to PHP streams."
+    },
     "require-dev": {
         "pestphp/pest": "^5.1",
         "friendsofphp/php-cs-fixer": "^3.95",

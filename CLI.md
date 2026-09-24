@@ -2,91 +2,26 @@
 
 `elephstamp` puts the whole library in your shell: create timestamp proofs,
 collect their Bitcoin confirmations, and understand exactly what every
-calendar server has done with them. For the PHP API, see
-[LIBRARY.md](LIBRARY.md).
+calendar server has done with them.
+
+To install it (PHAR, Docker or Composer), see [CLI-INSTALL.md](CLI-INSTALL.md).
+For the PHP API, see [LIBRARY.md](LIBRARY.md).
 
 ## Contents
 
-- [Installation](#installation)
 - [At a glance](#at-a-glance)
 - [Conventions](#conventions)
-- [`stamp` — create proofs](#stamp--create-proofs)
-- [`upgrade` — collect confirmations](#upgrade--collect-confirmations)
-- [`verify` — check against the blockchain](#verify--check-against-the-blockchain)
-- [`info` — understand a proof](#info--understand-a-proof)
-- [`tree` — every hash](#tree--every-hash)
-- [`calendars` — the defaults](#calendars--the-defaults)
+- Commands
+  - [`stamp` — create proofs](#stamp--create-proofs)
+  - [`upgrade` — collect confirmations](#upgrade--collect-confirmations)
+  - [`verify` — check against the blockchain](#verify--check-against-the-blockchain)
+  - [`info` — understand a proof](#info--understand-a-proof)
+  - [`tree` — every hash](#tree--every-hash)
+  - [`calendars` — the defaults](#calendars--the-defaults)
 - [JSON output](#json-output)
 - [Security: the upgrade whitelist](#security-the-upgrade-whitelist)
 - [Automating with cron](#automating-with-cron)
-- [Shell completion](#shell-completion)
 - [What the tool does not do](#what-the-tool-does-not-do)
-
-## Installation
-
-As a standalone PHAR, attached to every
-[GitHub release](https://github.com/CondorcetVote/Elephstamp/releases):
-
-```bash
-curl -LO https://github.com/CondorcetVote/Elephstamp/releases/latest/download/elephstamp.phar
-curl -LO https://github.com/CondorcetVote/Elephstamp/releases/latest/download/elephstamp.phar.sha256
-sha256sum -c elephstamp.phar.sha256
-chmod +x elephstamp.phar
-sudo mv elephstamp.phar /usr/local/bin/elephstamp
-elephstamp --help
-```
-
-Each PHAR is built by the release workflow from the tagged source, and comes
-with a signed build provenance attestation. With the GitHub CLI, you can check
-that the file is the one that workflow produced:
-
-```bash
-gh attestation verify elephstamp.phar --repo CondorcetVote/Elephstamp
-```
-
-With Docker, from the
-[`julienboudry/elephstamp`](https://hub.docker.com/r/julienboudry/elephstamp)
-image published on Docker Hub for every release (`linux/amd64`,
-`linux/arm64` and `linux/riscv64`, on the official Debian-based PHP image).
-It runs the same PHAR, in `/data`: mount the directory holding your files
-there, and run as your own user so the proofs it writes belong to you:
-
-```bash
-docker run --rm -v "$PWD:/data" --user "$(id -u):$(id -g)" \
-    julienboudry/elephstamp stamp contract.pdf
-```
-
-Tags follow the releases: `1.4.0` for an exact version, `1.4` and `1` for the
-newest release in that line, and `latest`. For everyday use, an alias makes the
-container behave like the installed command:
-
-```bash
-alias elephstamp='docker run --rm -v "$PWD:/data" --user "$(id -u):$(id -g)" julienboudry/elephstamp'
-```
-
-Only paths under the mounted directory are visible to the container: pass
-them relative to it (`stamp docs/contract.pdf`, not an absolute host path).
-Likewise, `127.0.0.1` in `--node` is the container itself: to reach a Bitcoin
-node on the host, add `--network host` (Linux), or run the container on the
-node's Docker network and use its service name. Mount the `.cookie` file for
-`--node-cookie`. The image also carries a signed build provenance attestation:
-
-```bash
-gh attestation verify oci://docker.io/julienboudry/elephstamp:latest --repo CondorcetVote/Elephstamp
-```
-
-With Composer, as a global tool:
-
-```bash
-composer global require condorcet-vote/elephstamp
-elephstamp --help
-```
-
-Make sure Composer's global `bin` directory (`composer global config bin-dir
---absolute`) is on your `PATH`.
-
-Inside a project that already depends on the library, the command is at
-`vendor/bin/elephstamp`. It needs PHP 8.5+ with the `mbstring` extension.
 
 ## At a glance
 
@@ -101,24 +36,40 @@ elephstamp tree contract.pdf.ots         # every operation and hash, for checkin
 
 ## Conventions
 
-- `elephstamp` alone lists the commands; `elephstamp help <command>` shows every
-  option of one, with examples.
-- Every command that reads proofs accepts **several** `.ots` files at once
-  (`proofs/*.ots` works) and reports each in turn.
-- File digests and merkle roots are always printed in full. Only the calendar
-  **commitments** in tables are abbreviated to `first8…last8`, because they are
-  long and there is one per calendar; pass `-v` for full values, or use `tree`,
-  which never abbreviates. Abbreviation is a human-reading convenience: `--json`
-  never abbreviates anything, whatever the verbosity.
-- Output is coloured on a terminal; `--no-ansi` disables it, `--json` (where
-  available) replaces it with a machine-readable document.
-- Exit codes are part of the contract and listed for each command below.
-  Across all commands: `0` success, `1` bad usage or an error (unreadable file,
-  write failure, too few calendars, failed verification); `upgrade` and
-  `verify` add `2` for "not yet": still pending, awaiting confirmations,
-  source unreachable.
+### Getting help
+
+`elephstamp` alone lists the commands; `elephstamp help <command>` shows every
+option of one, with examples.
+
+### Several proofs at once
+
+Every command that reads proofs accepts **several** `.ots` files at once
+(`proofs/*.ots` works) and reports each in turn.
+
+### Full and abbreviated hashes
+
+File digests and merkle roots are always printed in full. Only the calendar
+**commitments** in tables are abbreviated to `first8…last8`, because they are
+long and there is one per calendar; pass `-v` for full values, or use `tree`,
+which never abbreviates. Abbreviation is a human-reading convenience: `--json`
+never abbreviates anything, whatever the verbosity.
+
+### Colours and JSON
+
+Output is coloured on a terminal; `--no-ansi` disables it, `--json` (where
+available) replaces it with a machine-readable document.
+
+### Exit codes
+
+Exit codes are part of the contract and listed for each command below.
+Across all commands: `0` success, `1` bad usage or an error (unreadable file,
+write failure, too few calendars, failed verification); `upgrade` and
+`verify` add `2` for "not yet": still pending, awaiting confirmations,
+source unreachable.
 
 ## `stamp` — create proofs
+
+### Usage
 
 ```bash
 elephstamp stamp contract.pdf                 # writes contract.pdf.ots
@@ -132,20 +83,13 @@ elephstamp stamp contract.pdf -c https://ots.internal.example -m 1
 Hashes each file as a stream (large files are fine), submits the commitment
 to the calendars and writes one proof per file, next to it as `<file>.ots`.
 
-| Option | Effect |
-| --- | --- |
-| `-o, --output=PATH` | Write the proof here instead of `<file>.ots`. Single file or digest only. |
-| `--digest=HEX` | Timestamp a hex digest you already computed, instead of a file: 64 characters of SHA-256, or the length of the `--hash` algorithm. Defaults to writing `<hex>.ots`. |
-| `--hash=NAME` | Algorithm the proof commits to the file with: `sha256` (the default, and the only one the reference client produces), `sha1`, `ripemd160` or `keccak256`. Applies to files and to `--digest`; never guessed from a digest's length. `keccak256` reads the whole file into memory and is slow on large files. |
-| `--no-nonce` | Commit to the plain file hash. The calendars, and the sibling proofs of a batch, then learn the real digest. |
-| `-c, --calendar=URL` | Calendar to submit to. Repeatable; replaces the default list. Must be `https`. |
-| `-m, --required=N` | How many calendars must accept the stamp (the "m" of m-of-n). Default `2`, or `1` with a single calendar. |
-| `--timeout=SECONDS` | Give up on a calendar after this long (idle and total). |
-| `-f, --force` | Overwrite an existing `.ots`. Without it the command refuses and writes nothing. |
+### Several files
 
 Several files share one merkle tree and thus a single calendar submission,
 but each gets an independent, standalone proof. Later, each proof is upgraded
 on its own; they all turn complete at the same block.
+
+### Output
 
 A fresh proof is **pending**: the calendars have recorded the commitment,
 Bitcoin has not confirmed it yet, which usually takes a few hours. The report
@@ -165,13 +109,32 @@ command to run later:
  [OK] 1 proof written. Status: pending — Bitcoin confirmation usually takes a few hours.
 ```
 
+### When calendars fail
+
 Calendars are contacted concurrently, and one that is down is tolerated as
 long as `--required` of them accept. Below that threshold nothing is written
 and the command exits `1` with each calendar's error.
 
-**Exit codes:** `0` every proof written; `1` nothing written.
+### Options
+
+| Option | Effect |
+| --- | --- |
+| `-o, --output=PATH` | Write the proof here instead of `<file>.ots`. Single file or digest only. |
+| `--digest=HEX` | Timestamp a hex digest you already computed, instead of a file: 64 characters of SHA-256, or the length of the `--hash` algorithm. Defaults to writing `<hex>.ots`. |
+| `--hash=NAME` | Algorithm the proof commits to the file with: `sha256` (the default, and the only one the reference client produces), `sha1`, `ripemd160` or `keccak256`. Applies to files and to `--digest`; never guessed from a digest's length. `keccak256` reads the whole file into memory and is slow on large files. |
+| `--no-nonce` | Commit to the plain file hash. The calendars, and the sibling proofs of a batch, then learn the real digest. |
+| `-c, --calendar=URL` | Calendar to submit to. Repeatable; replaces the default list. Must be `https`. |
+| `-m, --required=N` | How many calendars must accept the stamp (the "m" of m-of-n). Default `2`, or `1` with a single calendar. |
+| `--timeout=SECONDS` | Give up on a calendar after this long (idle and total). |
+| `-f, --force` | Overwrite an existing `.ots`. Without it the command refuses and writes nothing. |
+
+### Exit codes
+
+`0` every proof written; `1` nothing written.
 
 ## `upgrade` — collect confirmations
+
+### Usage
 
 ```bash
 elephstamp upgrade contract.pdf.ots
@@ -200,13 +163,36 @@ answered:
  [OK] Now complete: anchored in Bitcoin block 912345. Saved to contract.pdf.ots.
 ```
 
+A proof that gained attestations is rewritten in place, atomically. When
+nothing changed, the note explains why (confirmation still pending,
+unreachable calendars, skipped hosts, answers held back by the check) and
+what to do about it.
+
+### Calendar answers
+
+| Answer | Meaning |
+| --- | --- |
+| `upgraded` | The calendar returned attestations that were merged into the proof. |
+| `unchanged` | The calendar answered with material the proof already held. |
+| `still pending` | The calendar has nothing yet for this commitment. Try later. |
+| `failed` | Network or protocol error; the calendar's message follows. |
+| `rejected` | The calendar returned a proof for a *different* digest, or naming a block whose merkle root differs from the one the proof leads to. Hostile or corrupt, discarded. |
+| `unconfirmed` | The answer matches its block, but the block is still shallower than `--min-confirmations`. Not merged yet; try later. |
+| `unverifiable` | The answer could not be checked: the explorer or node was unreachable or knows no such block, or the attestation sits below an operation this tool cannot compute. Not merged. |
+| `skipped` | The calendar's host is not on the whitelist, so it was never contacted. |
+| `confirmed` | A Bitcoin attestation already hangs below this submission, nothing to ask. Only with `--all`. |
+
+### Checking answers before merging them
+
 A calendar is a third party, and its answer is untrusted: it could name a
 block that does not commit to the proof, or one mined a minute ago that a
 reorganisation may still drop. Merged blindly, either would leave you with a
-"complete" proof that `verify` fails. So before anything is merged, each
-Bitcoin attestation in an answer is checked exactly as `verify` would: the
-block explorer (mempool.space by default, see `--explorer`) or your own node
-(`--node`) is asked for the block's header, the merkle roots must match, and the block must be buried
+"complete" proof that `verify` fails.
+
+So before anything is merged, each Bitcoin attestation in an answer is
+checked exactly as `verify` would: the block explorer (mempool.space by
+default, see `--explorer`) or your own node (`--node`) is asked for the
+block's header, the merkle roots must match, and the block must be buried
 under `--min-confirmations` blocks (6). An answer that fails the check is not
 merged, and the calendar stays pending to be asked again next time:
 
@@ -228,22 +214,11 @@ merged, and the calendar stays pending to be asked again next time:
 `--no-verify` merges whatever the calendars return, as the reference `ots`
 client does; the answer then reads `upgraded — Bitcoin block 912345 (not checked)`.
 
-| Answer | Meaning |
-| --- | --- |
-| `upgraded` | The calendar returned attestations that were merged into the proof. |
-| `unchanged` | The calendar answered with material the proof already held. |
-| `still pending` | The calendar has nothing yet for this commitment. Try later. |
-| `failed` | Network or protocol error; the calendar's message follows. |
-| `rejected` | The calendar returned a proof for a *different* digest, or naming a block whose merkle root differs from the one the proof leads to. Hostile or corrupt, discarded. |
-| `unconfirmed` | The answer matches its block, but the block is still shallower than `--min-confirmations`. Not merged yet; try later. |
-| `unverifiable` | The answer could not be checked: the explorer or node was unreachable or knows no such block, or the attestation sits below an operation this tool cannot compute. Not merged. |
-| `skipped` | The calendar's host is not on the whitelist, so it was never contacted. |
-| `confirmed` | A Bitcoin attestation already hangs below this submission, nothing to ask. Only with `--all`. |
+### Collecting every calendar's attestation
 
-A proof that gained attestations is rewritten in place, atomically. A proof
-that is already complete is reported as such and not polled: one Bitcoin
-attestation is all a proof needs, so the calendars still marked pending in it
-are never contacted again.
+A proof that is already complete is reported as such and not polled: one
+Bitcoin attestation is all a proof needs, so the calendars still marked
+pending in it are never contacted again.
 
 To collect the other calendars' attestations anyway, pass `--all`. Each
 calendar's transaction usually lands in a slightly different block, and the
@@ -262,25 +237,7 @@ proof then carries one attestation per branch (`info` lists them all,
  [OK] Complete (Bitcoin block 967571): 2 new attestations merged. Confirmed through 3 of 4 calendars. Saved to contract.pdf.ots.
 ```
 
-When nothing changed, the note explains why (confirmation still pending,
-unreachable calendars, skipped hosts, answers held back by the check) and
-what to do about it.
-
-| Option | Effect |
-| --- | --- |
-| `--dry-run` | Poll and report, but write nothing. |
-| `--all` | Also poll the calendars still pending in an already complete proof, to collect every attestation. |
-| `-o, --output=PATH` | Write the upgraded proof here instead of in place. Single proof only. |
-| `-l, --whitelist=PATTERN` | Allow contacting calendars matching this `https://host` pattern (globs allowed). Repeatable. |
-| `--no-default-whitelist` | Drop the built-in public-operator patterns; only `--whitelist` ones remain. |
-| `--no-verify` | Merge the answers without checking them against the blockchain first. |
-| `--min-confirmations=N` | Depth a block named by a calendar needs before its attestation is merged, itself included. Default `6`. |
-| `-e, --explorer=NAME` | Which explorer checks the answers: `mempool` (mempool.space, the default) or `blockstream` (blockstream.info). Repeatable: all named explorers must agree. |
-| `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
-| `--node=URL` | Check the answers against your own Bitcoin node instead (JSON-RPC, see [`verify`](#verify--check-against-the-blockchain)). With `--explorer`, all sources must agree. |
-| `--node-user=USER`, `--node-password=PASSWORD`, `--node-cookie=PATH` | RPC credentials for `--node`. |
-| `--timeout=SECONDS` | Give up on a calendar, an explorer or the node after this long. |
-| `--json` | Machine-readable output, see [JSON output](#json-output). |
+### Several proofs
 
 With several proofs a summary closes the report:
 
@@ -288,12 +245,33 @@ With several proofs a summary closes the report:
  3 proofs: 2 complete, 1 still pending.
 ```
 
-**Exit codes:** `0` every proof is complete; `2` at least one is still pending
-(and nothing went wrong); `1` bad usage, or a proof could not be read or
-written. This makes `upgrade` easy to script, see
-[Automating with cron](#automating-with-cron).
+### Options
+
+| Option | Effect |
+| --- | --- |
+| `--dry-run` | Poll and report, but write nothing. |
+| `--all` | Also poll the calendars still pending in an already complete proof, to collect every attestation. |
+| `-o, --output=PATH` | Write the upgraded proof here instead of in place. Single proof only. |
+| `-l, --whitelist=PATTERN` | Allow contacting calendars matching this `https://host` pattern (globs allowed). Repeatable. See [the upgrade whitelist](#security-the-upgrade-whitelist). |
+| `--no-default-whitelist` | Drop the built-in public-operator patterns; only `--whitelist` ones remain. |
+| `--no-verify` | Merge the answers without checking them against the blockchain first. |
+| `--min-confirmations=N` | Depth a block named by a calendar needs before its attestation is merged, itself included. Default `6`. |
+| `-e, --explorer=NAME` | Which explorer checks the answers: `mempool` (mempool.space, the default) or `blockstream` (blockstream.info). Repeatable: all named explorers must agree. |
+| `--explorer-url=URL` | Any other Esplora-compatible API, e.g. a self-hosted instance. Repeatable, `https` only. |
+| `--node=URL` | Check the answers against your own Bitcoin node instead (JSON-RPC, see [Using your own node](#using-your-own-node)). With `--explorer`, all sources must agree. |
+| `--node-user=USER`, `--node-password=PASSWORD`, `--node-cookie=PATH` | RPC credentials for `--node`. |
+| `--timeout=SECONDS` | Give up on a calendar, an explorer or the node after this long. |
+| `--json` | Machine-readable output, see [JSON output](#json-output). |
+
+### Exit codes
+
+`0` every proof is complete; `2` at least one is still pending (and nothing
+went wrong); `1` bad usage, or a proof could not be read or written. This
+makes `upgrade` easy to script, see [Automating with cron](#automating-with-cron).
 
 ## `verify` — check against the blockchain
+
+### Usage
 
 ```bash
 elephstamp verify contract.pdf.ots                          # original file found next to it
@@ -313,6 +291,7 @@ block the proof names. Then asks a block explorer, or a Bitcoin node you run,
 for the header of those blocks. **By default the explorer is mempool.space.**
 Pick blockstream.info with `--explorer blockstream`, any Esplora instance with
 `--explorer-url`, or your own node with `--node`.
+
 A proof is **verified** when a block's merkle root equals the one the proof
 leads to, and the block is buried under enough confirmations. The verdict
 opens the report as a full-width banner:
@@ -333,7 +312,11 @@ opens the report as a full-width banner:
   967603   b7d2c0f1…2ae4c9d0     b7d2c0f1…2ae4c9d0     2026-09-18 21:02:44   18              verified — merkle roots match
 ```
 
-`-v` prints full merkle roots and the block hashes.
+`-v` prints full merkle roots and the block hashes. Without an original file
+or digest, the banner says so: the proof itself is verified, not that it
+belongs to a given file.
+
+### Verdicts
 
 | Banner | Meaning | Exit |
 | --- | --- | --- |
@@ -347,30 +330,51 @@ Per block, the *Result* column reads `verified`, `matches, awaiting
 confirmations (n of 6)`, `MISMATCH`, `unavailable — <reason>` or `not
 computable` (below an operation this tool cannot compute).
 
-**What is trusted.** Only the block header comes from outside, and the
-explorer is a third party you trust for it. Two things bound that trust. The
-explorer's raw 80-byte header is parsed locally: its hash is recomputed and
-checked against the difficulty the header itself declares, so an explorer
-cannot slip in a bogus merkle root without forging a valid proof of work.
-And several explorers can be required to agree: repeat `--explorer` (or add
-`--explorer-url`) and the verification only passes if they all return the
-same header.
+### What is trusted
 
-**Your own node.** `--node` asks a Bitcoin node over its JSON-RPC interface
-(`getblockhash`, `getblockheader`, `getblockcount`) instead of an explorer, so
-nobody else is trusted. Only headers are fetched: a **pruned node is enough**,
-without wallet or transaction index. Bitcoin Core listens on `8332` (mainnet)
-and takes HTTP Basic credentials: put them in the URL
-(`http://user:password@127.0.0.1:8332`), pass `--node-user` and
-`--node-password`, or point `--node-cookie` at the `.cookie` file Bitcoin Core
-writes in its data directory when no `rpcpassword` is configured (the cookie
-keeps the password out of your shell history and process list). A hosted RPC
-provider speaking the same protocol works the same way, over `https`. Plain
-`http` is accepted for local and private hosts only (`localhost`, a name
-without a dot, loopback, RFC 1918 and link-local addresses). Combine `--node`
-with `--explorer` and every source must agree. Wrong credentials, a node still
-loading, or a block it does not have (a mainnet proof against a regtest node,
-say) make the attestation `unavailable` with the reason, exit `2`.
+Only the block header comes from outside, and the explorer is a third party
+you trust for it. Two things bound that trust:
+
+- The explorer's raw 80-byte header is parsed locally: its hash is recomputed
+  and checked against the difficulty the header itself declares, so an
+  explorer cannot slip in a bogus merkle root without forging a valid proof
+  of work.
+- Several explorers can be required to agree: repeat `--explorer` (or add
+  `--explorer-url`) and the verification only passes if they all return the
+  same header.
+
+### Using your own node
+
+`--node` asks a Bitcoin node over its JSON-RPC interface (`getblockhash`,
+`getblockheader`, `getblockcount`) instead of an explorer, so nobody else is
+trusted. Only headers are fetched: a **pruned node is enough**, without
+wallet or transaction index. Combine `--node` with `--explorer` and every
+source must agree.
+
+#### Credentials
+
+Bitcoin Core listens on `8332` (mainnet) and takes HTTP Basic credentials:
+
+- put them in the URL (`http://user:password@127.0.0.1:8332`);
+- or pass `--node-user` and `--node-password`;
+- or point `--node-cookie` at the `.cookie` file Bitcoin Core writes in its
+  data directory when no `rpcpassword` is configured (the cookie keeps the
+  password out of your shell history and process list).
+
+#### Hosted providers and plain `http`
+
+A hosted RPC provider speaking the same protocol works the same way, over
+`https`. Plain `http` is accepted for local and private hosts only
+(`localhost`, a name without a dot, loopback, RFC 1918 and link-local
+addresses).
+
+#### When the node cannot answer
+
+Wrong credentials, a node still loading, or a block it does not have (a
+mainnet proof against a regtest node, say) make the attestation `unavailable`
+with the reason, exit `2`.
+
+### Options
 
 | Option | Effect |
 | --- | --- |
@@ -386,13 +390,14 @@ say) make the attestation `unavailable` with the reason, exit `2`.
 | `--timeout=SECONDS` | Give up on an explorer or the node after this long. |
 | `--json` | Machine-readable output, see [JSON output](#json-output). |
 
-Without an original file or digest, the banner says so: the proof itself is
-verified, not that it belongs to a given file.
+### Exit codes
 
-**Exit codes:** `0` verified; `1` failed, bad usage, or an unreadable proof;
-`2` not verifiable yet.
+`0` verified; `1` failed, bad usage, or an unreadable proof; `2` not
+verifiable yet.
 
 ## `info` — understand a proof
+
+### Usage
 
 ```bash
 elephstamp info contract.pdf.ots
@@ -401,11 +406,13 @@ elephstamp info proofs/*.ots
 elephstamp info contract.pdf.ots -v        # full commitments in the calendar table
 ```
 
-Works **offline**: nothing is contacted. The report has four parts.
+Works **offline**: nothing is contacted. The report has four parts, described
+below.
 
-**Overview.** Status, hash algorithm, file digest, the digest submitted to
-the calendars, the original file and whether its digest still matches, proof
-size:
+### Overview
+
+Status, hash algorithm, file digest, the digest submitted to the calendars,
+the original file and whether its digest still matches, proof size:
 
 ```
   Status             pending — waiting on 2 calendars; run "upgrade" to poll
@@ -415,6 +422,10 @@ size:
   Original file      merkle1.txt — digest matches
   Proof size         335 bytes
 ```
+
+A complete proof reads `complete — anchored in Bitcoin block 358391`.
+
+#### Submitted digest
 
 *Submitted digest* is what the calendars actually received, which is all
 they know about your file. It reads:
@@ -429,6 +440,8 @@ they know about your file. It reads:
   point cannot be told apart from that calendar's own operations. The value
   is inferred from the proof's shape, not stored in it; see
   [`tree`](#tree--every-hash).
+
+#### Original file
 
 The original file is found automatically when it sits next to the proof
 (`contract.pdf` for `contract.pdf.ots`); otherwise the line reads
@@ -446,10 +459,11 @@ full-width red banner opens the report, before anything else:
 ```
 
 The rest of the report still follows (the proof itself may be perfectly
-valid, just for another file) and the command exits `1`. A complete proof
-reads `complete — anchored in Bitcoin block 358391`.
+valid, just for another file) and the command exits `1`.
 
-**Calendar submissions.** One row per pending attestation:
+### Calendar submissions
+
+One row per pending attestation:
 
 ```
   Calendar                                        Recorded at (calendar clock, UTC)   Commitment          State
@@ -468,6 +482,8 @@ reads `complete — anchored in Bitcoin block 358391`.
   polled: the proof is already complete` (see below); `not upgradable:
   calendar not on the whitelist`.
 
+#### Complete proofs
+
 A single Bitcoin attestation makes a proof complete: it is then fully
 verifiable on its own, and `upgrade` stops polling the other calendars, as the
 reference client does. Their submissions stay in the proof as a record, marked
@@ -475,9 +491,11 @@ reference client does. Their submissions stay in the proof as a record, marked
 complete proof says how many of the calendars got that far, e.g.
 `complete — anchored in Bitcoin block 967571 (confirmed through 1 of 4 calendars)`.
 
-**Bitcoin attestations.** For each Bitcoin attestation: the block height the
-proof claims, the id of the transaction carrying the commitment, and the
-block's merkle root, both in the byte order block explorers display:
+### Bitcoin attestations
+
+For each Bitcoin attestation: the block height the proof claims, the id of
+the transaction carrying the commitment, and the block's merkle root, both in
+the byte order block explorers display:
 
 ```
   Block height     967571
@@ -497,9 +515,13 @@ block header; explorers do not search by it, so open the block by its height
 and compare the field. When a proof does not embed a recognisable transaction
 the id reads `unknown` and the link points at the block instead.
 
-**Unsupported attestations.** Attestations of a type this tool does not
-understand (Litecoin, Ethereum, ...) are listed with their tag and payload
-size. They are preserved verbatim in the proof, just not interpreted.
+### Unsupported attestations
+
+Attestations of a type this tool does not understand (Litecoin, Ethereum, ...)
+are listed with their tag and payload size. They are preserved verbatim in
+the proof, just not interpreted.
+
+### Options
 
 | Option | Effect |
 | --- | --- |
@@ -507,10 +529,14 @@ size. They are preserved verbatim in the proof, just not interpreted.
 | `-l, --whitelist=PATTERN`, `--no-default-whitelist` | Same as for `upgrade`; they decide which submissions are reported as *upgradable*. |
 | `--json` | Machine-readable output, see [JSON output](#json-output). |
 
-**Exit codes:** `0` fine; `1` bad usage, a proof could not be read, or a digest
-mismatch was found.
+### Exit codes
+
+`0` fine; `1` bad usage, a proof could not be read, or a digest mismatch was
+found.
 
 ## `tree` — every hash
+
+### Usage
 
 ```bash
 elephstamp tree contract.pdf.ots
@@ -544,6 +570,8 @@ file sha256 digest d288b2ee212b01e3e5f6d333df3a4d53f292cc3f07b09013c0b40c8e7dcb9
 hash in full.) A linear chain of operations stays flat; only a real fork nests
 its branches, like the reference client's `ots info`.
 
+### Where the calendars take over
+
 The tree separates what your side computed from what the calendars did:
 
 - **`(privacy nonce)`** flags the random bytes the client appended to the file
@@ -558,16 +586,21 @@ The tree separates what your side computed from what the calendars did:
 
 A proof is not labelled with that point: it is inferred as the first place
 where the calendar branches diverge (or a digest several calendars attested
-directly). `info` reports the same digest on its *Submitted digest* line. A proof with a single branch (one
-calendar, or a complete proof reduced to its Bitcoin path) has no such fork,
-so neither marker is shown rather than guessed.
+directly). `info` reports the same digest on its *Submitted digest* line. A
+proof with a single branch (one calendar, or a complete proof reduced to its
+Bitcoin path) has no such fork, so neither marker is shown rather than
+guessed.
+
+### Options
 
 | Option | Effect |
 | --- | --- |
 | `--no-hashes` | Operations only, without the hash each produces. |
 | `--plain` | The reference client's indented text layout, identical to `Receipt::describe()`. |
 
-**Exit codes:** `0` fine; `1` a proof could not be read.
+### Exit codes
+
+`0` fine; `1` a proof could not be read.
 
 ## `calendars` — the defaults
 
@@ -577,9 +610,12 @@ block explorers `verify` can consult.
 
 ## JSON output
 
-`info`, `upgrade` and `verify` accept `--json`. One proof yields one object; several
-proofs yield a list, in argument order. A proof that could not be read yields
-`{"receipt": "...", "error": "..."}` in its slot, and the exit code is `1`.
+### General rules
+
+`info`, `upgrade` and `verify` accept `--json`. One proof yields one object;
+several proofs yield a list, in argument order. A proof that could not be
+read yields `{"receipt": "...", "error": "..."}` in its slot, and the exit
+code is `1`.
 
 The document is the same at every verbosity: `-v`, `-vv` and `-vvv` change the
 human output only, never the JSON. Every hash it carries — file digests,
@@ -587,7 +623,7 @@ commitments, merkle roots, block hashes, transaction ids — is complete and
 lower-case hex, never abbreviated. (`-q` silences the output altogether, JSON
 included.)
 
-`info --json`:
+### `info --json`
 
 ```json
 {
@@ -637,11 +673,11 @@ checked; `digest_matches` is also `null` when the file could not be read.
 `recorded_at`, `commitment` and `transaction_id` are `null` when they cannot
 be determined. `submission` is `null` when the submitted digest cannot be told
 apart (a single calendar branch); `submission.digest` is `null` below an
-operation that cannot be computed. The proof above is a composite, built to show every
-field at once: a real one rarely carries a pending calendar, a Bitcoin
-attestation and an unknown notary all together.
+operation that cannot be computed. The proof above is a composite, built to
+show every field at once: a real one rarely carries a pending calendar, a
+Bitcoin attestation and an unknown notary all together.
 
-`upgrade --json`:
+### `upgrade --json`
 
 ```json
 {
@@ -678,7 +714,7 @@ of the block it named, and `block_header_source` which explorer was asked
 (`null` when none was); with `--node` it names the node's host. `saved_to` is
 `null` when nothing was written (no change, or `--dry-run`).
 
-`verify --json`:
+### `verify --json`
 
 ```json
 {
@@ -719,11 +755,15 @@ set for a verified proof.
 
 ## Security: the upgrade whitelist
 
+### Why a whitelist
+
 A proof embeds the URIs of the calendars to poll. A proof is untrusted input:
 if those URIs were contacted blindly, a hostile `.ots` could make the tool send
 requests to arbitrary hosts (an SSRF vector). `upgrade` therefore only
 contacts hosts matching a whitelist, and `info` reports the others as *not
 upgradable*.
+
+### The default whitelist
 
 The default whitelist covers the known public operators:
 
@@ -733,33 +773,45 @@ https://*.calendar.eternitywall.com
 https://*.calendar.catallaxy.com
 ```
 
-Add your own with `-l/--whitelist` (repeatable). Patterns are `https://host`
-URLs whose host may contain shell globs; an explicit port must be listed
-explicitly; `http://` is refused. A glob must be followed by at least two
-literal domain labels (`https://*.internal.example`): `https://*`,
-`https://*.example` or `https://10.0.0.*` are refused as too broad, and the
-command exits `1`. A host without a glob, IP addresses included, is always
-accepted as written. URLs are parsed strictly (RFC 3986) and each calendar
-is contacted at the normalized URL that was checked, not at the raw string
-from the proof. `--no-default-whitelist` keeps only your
-patterns:
+The calendars the tool stamps with are always allowed too, as in the library.
+
+### Adding your own patterns
+
+Add your own with `-l/--whitelist` (repeatable). `--no-default-whitelist`
+keeps only your patterns:
 
 ```bash
 elephstamp upgrade proof.ots --no-default-whitelist -l 'https://ots.internal.example'
 ```
 
-The calendars the tool stamps with are always allowed too, as in the library.
+#### Pattern rules
+
+- Patterns are `https://host` URLs whose host may contain shell globs;
+  `http://` is refused, and an explicit port must be listed explicitly.
+- A glob must be followed by at least two literal domain labels
+  (`https://*.internal.example`): `https://*`, `https://*.example` or
+  `https://10.0.0.*` are refused as too broad, and the command exits `1`.
+- A host without a glob, IP addresses included, is always accepted as
+  written.
+- URLs are parsed strictly (RFC 3986) and each calendar is contacted at the
+  normalized URL that was checked, not at the raw string from the proof.
+
+### Hardened traffic
 
 Calendar traffic is hardened as in the library: `https` only, redirects never
 followed, responses capped at 10 kB, timeouts on idle and total duration.
 
+### Checked answers
+
 The whitelist decides *who* is asked; what they answer is checked too. As
-described under [`upgrade`](#upgrade--collect-confirmations), every Bitcoin
-attestation a calendar returns is verified against the blockchain before it
-is merged, so a calendar that lies (or has a bug) cannot turn your proof into
-one that fails verification. `--no-verify` disables that check.
+described under [`upgrade`](#checking-answers-before-merging-them), every
+Bitcoin attestation a calendar returns is verified against the blockchain
+before it is merged, so a calendar that lies (or has a bug) cannot turn your
+proof into one that fails verification. `--no-verify` disables that check.
 
 ## Automating with cron
+
+### A periodic job
 
 `upgrade` exits `2` while a proof is pending and `0` once it is complete, so a
 periodic job can keep polling until it is done:
@@ -769,7 +821,9 @@ periodic job can keep polling until it is done:
 0 * * * *  cd /srv/proofs && elephstamp upgrade --no-ansi *.ots >> upgrade.log 2>&1
 ```
 
-In a script, the exit code alone tells the story:
+### In a script
+
+The exit code alone tells the story:
 
 ```bash
 if elephstamp upgrade --quiet contract.pdf.ots; then
@@ -779,16 +833,6 @@ fi
 
 For machine consumption, prefer `--json` and read `status` and
 `calendars[].outcome`.
-
-## Shell completion
-
-Symfony Console provides completion for bash, zsh and fish:
-
-```bash
-elephstamp completion bash > ~/.local/share/bash-completion/completions/elephstamp
-# or, for the current shell only:
-eval "$(elephstamp completion bash)"
-```
 
 ## What the tool does not do
 
@@ -801,3 +845,5 @@ eval "$(elephstamp completion bash)"
 - **No non-Bitcoin notaries.** Litecoin or Ethereum attestations are preserved
   and listed as unsupported, never interpreted or upgraded.
 - **No pruning or editing of proofs**: the tool only ever adds attestations.
+
+Shell completion is covered in [CLI-INSTALL.md](CLI-INSTALL.md#shell-completion).

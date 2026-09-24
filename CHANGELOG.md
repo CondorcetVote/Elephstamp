@@ -6,12 +6,16 @@
 
 - A standalone `elephstamp.phar` is attached to every GitHub release, with
   its SHA-256 checksum and a signed build provenance attestation
-  (`gh attestation verify`). See [CLI.md](CLI.md#installation).
+  (`gh attestation verify`). See [CLI-INSTALL.md](CLI-INSTALL.md#standalone-phar).
 - A Docker image of the CLI, `julienboudry/elephstamp`, is published on
   Docker Hub for every release (`linux/amd64`, `linux/arm64`,
   `linux/riscv64`), built from that same PHAR on the Debian-based PHP image
-  and attested the same way. See [CLI.md](CLI.md#installation) for volume
+  and attested the same way. See [CLI-INSTALL.md](CLI-INSTALL.md#docker-image) for volume
   mounting and running as your own user.
+- The `curl` extension is now suggested in `composer.json` and recommended
+  in the installation docs: with it, calendars, block explorers and nodes are
+  contacted through curl (faster concurrent requests, HTTP/2) rather than PHP
+  streams. It stays optional; the Docker image ships it.
 - `elephstamp stamp --hash=sha256|sha1|ripemd160|keccak256` chooses the
   algorithm a proof commits to the file with, for files as well as for
   `--digest`, whose expected length follows. The default stays SHA-256; the
@@ -42,6 +46,11 @@
 
 ### Changed
 
+- Documentation reorganised for newcomers: installing the CLI (PHAR, Docker,
+  Composer, shell completion) now has its own guide, `CLI-INSTALL.md`; the
+  README carries the library's installation and a fuller quick tour of both
+  the CLI and the library; `LIBRARY.md` and `CLI.md` focus on usage, with a
+  proper heading for every sub-part.
 - The calendars a client stamps with (`calendarUrls`) are now always allowed
   to be contacted by `upgrade()`, on top of the upgrade whitelist. A private
   calendar no longer has to be listed again in `upgradeWhitelist`; passing

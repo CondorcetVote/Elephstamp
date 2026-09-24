@@ -130,6 +130,8 @@ jobs:
       - name: Smoke test
         run: |
           test "$(docker run --rm elephstamp:smoke-test --version)" = "ElephStamp ${TAG}"
+          docker run --rm --entrypoint php elephstamp:smoke-test \
+            -r 'exit(extension_loaded("curl") && extension_loaded("mbstring") ? 0 : 1);'
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/tests/fixtures:/data" \
             elephstamp:smoke-test info hello-world.txt.ots
 
