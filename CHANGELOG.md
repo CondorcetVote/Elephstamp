@@ -2,24 +2,23 @@
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-09-24
+
 ### Added
 
-- A standalone `elephstamp.phar` is attached to every GitHub release, with
-  its SHA-256 checksum and a signed build provenance attestation
-  (`gh attestation verify`). See [CLI-INSTALL.md](CLI-INSTALL.md#standalone-phar).
-- A Docker image of the CLI, `julienboudry/elephstamp`, is published on
+- **Ready-made CLI builds.** A standalone `elephstamp.phar` is attached to
+  every GitHub release, with its SHA-256 checksum and a signed build
+  provenance attestation (`gh attestation verify`). See
+  [CLI-INSTALL.md](CLI-INSTALL.md#standalone-phar).
+- **A Docker image of the CLI**, `julienboudry/elephstamp`, is published on
   Docker Hub for every release (`linux/amd64`, `linux/arm64`,
   `linux/riscv64`), built from that same PHAR on the Debian-based PHP image
-  and attested the same way. See [CLI-INSTALL.md](CLI-INSTALL.md#docker-image) for volume
-  mounting and running as your own user.
-- The `curl` extension is now suggested in `composer.json` and recommended
-  in the installation docs: with it, calendars, block explorers and nodes are
-  contacted through curl (faster concurrent requests, HTTP/2) rather than PHP
-  streams. It stays optional; the Docker image ships it.
-- `elephstamp stamp --hash=sha256|sha1|ripemd160|keccak256` chooses the
-  algorithm a proof commits to the file with, for files as well as for
-  `--digest`, whose expected length follows. The default stays SHA-256; the
-  algorithm is never guessed from a digest's length.
+  and attested the same way. See [CLI-INSTALL.md](CLI-INSTALL.md#docker-image)
+  for volume mounting, running as your own user, and building it yourself.
+- **Choice of hash algorithm.** `elephstamp stamp --hash=sha256|sha1|ripemd160|keccak256`
+  chooses the algorithm a proof commits to the file with, for files as well
+  as for `--digest`, whose expected length follows. The default stays
+  SHA-256; the algorithm is never guessed from a digest's length.
 - `HashOperation::fromName()` and `HashOperation::names()` resolve a hash
   operation from its name (`sha256`, `sha1`, `ripemd160`, `keccak256`), e.g.
   to feed the `hashOperation` constructor argument from user input.
@@ -31,49 +30,52 @@
   holds the whole file in memory and runs at pure-PHP speed.
 - `NativeHashOperation`, the base of the PHP-backed hash operations
   (`Sha1`, `Sha256`, `Ripemd160`), which hash files as a stream.
-- `CalendarWhitelist::resolve()` returns the normalized URL to contact for an
-  allowed calendar URI, or `null` when it is not allowed.
-- `elephstamp tree` shows which digest was sent to the calendars: their
-  branches are grouped under a `submitted to the calendars` node, and the
-  client's random nonce is flagged `(privacy nonce)`. A proof stamped with
-  `--no-nonce` reads `(the file digest itself, no nonce)` instead. Proofs with
-  a single calendar branch are drawn as before.
+- **What the calendars received.** `elephstamp tree` groups the calendar
+  branches under a `submitted to the calendars` node and flags the client's
+  random nonce `(privacy nonce)`; a proof stamped with `--no-nonce` reads
+  `(the file digest itself, no nonce)` instead. Proofs with a single calendar
+  branch are drawn as before.
 - `elephstamp info` reports the same digest on a new *Submitted digest* line,
   saying whether it hides the file digest behind a privacy nonce and whether
   it is the root of a multi-file batch; `info --json` carries it as
   `submission` (`digest`, `privacy_nonce`, `batch`), or `null` when a single
   calendar branch does not show it.
+- `CalendarWhitelist::resolve()` returns the normalized URL to contact for an
+  allowed calendar URI, or `null` when it is not allowed.
+- The `curl` extension is now suggested in `composer.json` and recommended
+  in the installation docs: with it, calendars, block explorers and nodes are
+  contacted through curl (faster concurrent requests, HTTP/2) rather than PHP
+  streams. It stays optional; the Docker image ships it.
 
 ### Changed
 
+- The calendars a client stamps with (`calendarUrls`) are now always allowed
+  to be contacted by `upgrade()`, on top of the upgrade whitelist. A private
+  calendar no longer has to be listed again in `upgradeWhitelist`; passing
+  `upgradeWhitelist: []` now means "only my own calendars".
+- **Stricter upgrade whitelist patterns.** A glob must now be anchored to a
+  domain: it has to be followed by at least two literal labels, the last one
+  not numeric. Patterns such as `https://*`, `https://*.example` or
+  `https://10.0.0.*`, which would let a hostile proof reach any host or a
+  private network, now throw an `InvalidInputException` (the CLI's `-l` exits
+  `1`). A pattern without a host is refused too. Hosts written without a glob,
+  IP addresses included, are unaffected.
+- **Strict URL parsing in the upgrade whitelist.** Patterns and proof URIs are
+  now parsed as RFC 3986 (PHP's native URI extension) instead of
+  `parse_url()`, and `upgrade()` contacts each calendar at the normalized URL
+  it checked rather than at the raw URI from the proof, so no difference
+  between URL parsers can send a request to another host. URIs the strict
+  parser rejects (a backslash, a non-ASCII host) are skipped, and so are
+  patterns: they now throw an `InvalidInputException`. An explicit `:443` is
+  now treated as no port.
+- `HashOperation::hashData()`, `hashStream()` and `hashChunks()` are now
+  abstract: a custom hash operation implements them, or extends
+  `NativeHashOperation` and names a PHP `hash()` algorithm as before.
 - Documentation reorganised for newcomers: installing the CLI (PHAR, Docker,
   Composer, shell completion) now has its own guide, `CLI-INSTALL.md`; the
   README carries the library's installation and a fuller quick tour of both
   the CLI and the library; `LIBRARY.md` and `CLI.md` focus on usage, with a
   proper heading for every sub-part.
-- The calendars a client stamps with (`calendarUrls`) are now always allowed
-  to be contacted by `upgrade()`, on top of the upgrade whitelist. A private
-  calendar no longer has to be listed again in `upgradeWhitelist`; passing
-  `upgradeWhitelist: []` now means "only my own calendars".
-- Upgrade whitelist patterns with a glob must now be anchored to a domain: a
-  glob has to be followed by at least two literal labels, the last one not
-  numeric. Patterns such as `https://*`, `https://*.example` or
-  `https://10.0.0.*`, which would let a hostile proof reach any host or a
-  private network, now throw an `InvalidInputException` (the CLI's `-l` exits
-  `1`). A pattern without a host is refused too. Hosts written without a glob,
-  IP addresses included, are unaffected.
-- The upgrade whitelist now parses patterns and proof URIs strictly as
-  RFC 3986 (PHP's native URI extension) instead of `parse_url()`, and
-  `upgrade()` contacts each calendar at the normalized URL it checked rather
-  than at the raw URI from the proof, so no difference between URL parsers can
-  send a request to another host. URIs the strict parser rejects (a
-  backslash, a non-ASCII host) are skipped, and so are patterns: they now
-  throw an `InvalidInputException`. An explicit `:443` is now treated as no
-  port.
-
-- `HashOperation::hashData()`, `hashStream()` and `hashChunks()` are now
-  abstract: a custom hash operation implements them, or extends
-  `NativeHashOperation` and names a PHP `hash()` algorithm as before.
 
 ### Fixed
 
@@ -199,7 +201,8 @@ First release.
   captured in its `CalendarResponse` and can never abort a batch.
 - GitHub Actions CI and Dependabot configuration.
 
-[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.0.0...v1.1.0
