@@ -122,7 +122,16 @@ $receipts = $client->stampMany(
 );
 ```
 
-#### Saving each receipt
+#### What a sibling receipt reveals
+
+The files of a batch need not be related, and their contents stay private
+from one another: with the default [privacy nonce](#privacy-nonce), the
+receipt of `a.pdf` only carries its siblings' *nonced* leaves, from which
+their digests cannot be recovered. What it does reveal is the **link**: the
+proof shows it comes from a batch, roughly how many files it held, and
+whoever later holds two receipts of the batch can tell the files were
+stamped together, at the same moment, by the same party. When even that
+association must stay private, stamp the files separately.
 
 The returned list follows the order of the arguments, so you can zip it back
 onto your own paths and persist each proof:
@@ -171,7 +180,7 @@ FileToStamp::fromPath('public-release.zip')->withoutNonce();
 Note that inside a `stampMany()` batch, a file stamped without nonce also
 exposes its plain digest in the **sibling receipts** of the batch (the merkle
 tree embeds each leaf's message into its neighbours' proofs) — not only to the
-calendars.
+calendars. Never batch confidential files without the nonce.
 
 ### Hash algorithm
 

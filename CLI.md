@@ -89,8 +89,16 @@ to the calendars and writes one proof per file, next to it as `<file>.ots`.
 ### Several files
 
 Several files share one merkle tree and thus a single calendar submission,
-but each gets an independent, standalone proof. Later, each proof is upgraded
-on its own; they all turn complete at the same block.
+but each gets an independent, standalone proof; they all turn complete at
+the same block.
+
+The files need not be related, and one proof never exposes another file's
+digest (the sibling leaves it carries are hidden behind each file's privacy
+nonce). It does show that the file was stamped in a batch, and two proofs of
+the same batch can be matched: whoever holds both learns the files were
+stamped together, by the same party. Stamp separately when even that link is
+sensitive, and never batch confidential files with `--no-nonce`, which puts
+the plain digests in the sibling proofs.
 
 ### Output
 
