@@ -44,6 +44,37 @@ that the file is the one that workflow produced:
 gh attestation verify elephstamp.phar --repo CondorcetVote/Elephstamp
 ```
 
+With Docker, from the
+[`julienboudry/elephstamp`](https://hub.docker.com/r/julienboudry/elephstamp)
+image published on Docker Hub for every release (`linux/amd64`,
+`linux/arm64` and `linux/riscv64`, on the official Debian-based PHP image).
+It runs the same PHAR, in `/data`: mount the directory holding your files
+there, and run as your own user so the proofs it writes belong to you:
+
+```bash
+docker run --rm -v "$PWD:/data" --user "$(id -u):$(id -g)" \
+    julienboudry/elephstamp stamp contract.pdf
+```
+
+Tags follow the releases: `1.4.0` for an exact version, `1.4` and `1` for the
+newest release in that line, and `latest`. For everyday use, an alias makes the
+container behave like the installed command:
+
+```bash
+alias elephstamp='docker run --rm -v "$PWD:/data" --user "$(id -u):$(id -g)" julienboudry/elephstamp'
+```
+
+Only paths under the mounted directory are visible to the container: pass
+them relative to it (`stamp docs/contract.pdf`, not an absolute host path).
+Likewise, `127.0.0.1` in `--node` is the container itself: to reach a Bitcoin
+node on the host, add `--network host` (Linux), or run the container on the
+node's Docker network and use its service name. Mount the `.cookie` file for
+`--node-cookie`. The image also carries a signed build provenance attestation:
+
+```bash
+gh attestation verify oci://docker.io/julienboudry/elephstamp:latest --repo CondorcetVote/Elephstamp
+```
+
 With Composer, as a global tool:
 
 ```bash

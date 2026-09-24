@@ -7,6 +7,11 @@
 - A standalone `elephstamp.phar` is attached to every GitHub release, with
   its SHA-256 checksum and a signed build provenance attestation
   (`gh attestation verify`). See [CLI.md](CLI.md#installation).
+- A Docker image of the CLI, `julienboudry/elephstamp`, is published on
+  Docker Hub for every release (`linux/amd64`, `linux/arm64`,
+  `linux/riscv64`), built from that same PHAR on the Debian-based PHP image
+  and attested the same way. See [CLI.md](CLI.md#installation) for volume
+  mounting and running as your own user.
 - `elephstamp stamp --hash=sha256|sha1|ripemd160|keccak256` chooses the
   algorithm a proof commits to the file with, for files as well as for
   `--digest`, whose expected length follows. The default stays SHA-256; the

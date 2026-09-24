@@ -50,7 +50,9 @@
             "/linter_rules.json",
             "/reference.php",
             "/AGENTS.md",
-            "/box.json.dist"
+            "/box.json.dist",
+            "/Dockerfile",
+            "/.dockerignore"
         ]
     },
     "scripts": {

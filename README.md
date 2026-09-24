@@ -68,8 +68,9 @@ composer global require condorcet-vote/elephstamp
 ```
 
 or download `elephstamp.phar` from the
-[latest release](https://github.com/CondorcetVote/Elephstamp/releases/latest)
-(see [CLI.md](CLI.md#installation)).
+[latest release](https://github.com/CondorcetVote/Elephstamp/releases/latest),
+or run the `julienboudry/elephstamp` Docker image (see
+[CLI.md](CLI.md#installation)).
 
 ## In thirty seconds
 
