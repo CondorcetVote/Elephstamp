@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-09-25
+
 ### Added
 
 - **Batch upgrades and verifications.** `ElephStamp::upgradeMany()` polls a
@@ -223,7 +225,8 @@ First release.
   captured in its `CalendarResponse` and can never abort a batch.
 - GitHub Actions CI and Dependabot configuration.
 
-[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.1.0...v1.2.0

@@ -69,7 +69,7 @@ option.
 
 ## The image
 
-- **Tags:** an exact version (`1.4.0`), `1.4` and `1` for the newest release
+- **Tags:** an exact version (`X.Y.Z`), `X.Y` and `X` for the newest release
   in that line, and `latest`.
 - **Platforms:** `linux/amd64`, `linux/arm64`, `linux/riscv64`.
 - **Contents:** the release's `elephstamp.phar` on the official Debian-based

@@ -86,7 +86,7 @@ docker run --rm -v "$PWD:/data" julienboudry/elephstamp info contract.pdf.ots
 
 ### Tags
 
-Tags follow the releases: `1.4.0` for an exact version, `1.4` and `1` for the
+Tags follow the releases: `X.Y.Z` for an exact version, `X.Y` and `X` for the
 newest release in that line, and `latest`.
 
 ### Paths and networking
@@ -137,7 +137,7 @@ docker build -t elephstamp .
 
 Then run `elephstamp` instead of `julienboudry/elephstamp` in the commands
 above. A PHAR built from an untagged checkout reports its version as
-`dev-main`; prefix the `composer install` with `COMPOSER_ROOT_VERSION=1.4.0`
+`dev-main`; prefix the `composer install` with `COMPOSER_ROOT_VERSION=X.Y.Z`
 to give it another.
 
 ## Composer

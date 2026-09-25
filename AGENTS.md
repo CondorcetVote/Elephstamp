@@ -81,6 +81,11 @@ Treat these files as part of the API: out-of-date docs are a bug. Public
 examples must actually run as written — when in doubt, copy them into a
 scratch script and verify before committing.
 
+Never cite the current release number in these files (image tags,
+`COMPOSER_ROOT_VERSION`, …): write version examples as placeholders
+(`X.Y.Z`, `X.Y`, `X`) so a release never requires updating them. Only
+`CHANGELOG.md` carries real version numbers.
+
 - `docs/` holds the **generated** class reference (`composer document`). The
   generator wipes that directory on every run, so never put hand-written
   documentation there.
