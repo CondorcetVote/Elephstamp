@@ -270,6 +270,14 @@ describe('tags', function (): void {
         Receipt::fromBytes(hostileProof(hostileAttestation($tag, str_repeat("\xaa", TimeAttestation::MAX_PAYLOAD_SIZE + 1))));
     })->throws(SerializationException::class, 'exceeds maximum length');
 
+    it('parses a bitcoin attestation at the 32-bit height bound and rejects one above it', function (): void {
+        $receipt = Receipt::fromBytes(hostileProof(hostileBitcoin(BitcoinAttestation::MAX_HEIGHT)));
+
+        expect($receipt->bitcoinBlockHeight())->toBe(BitcoinAttestation::MAX_HEIGHT);
+
+        Receipt::fromBytes(hostileProof(hostileBitcoin(BitcoinAttestation::MAX_HEIGHT + 1)));
+    })->throws(SerializationException::class, 'block height too large');
+
     it('rejects a known attestation whose payload carries extra bytes', function (): void {
         Receipt::fromBytes(hostileProof(hostileAttestation(BitcoinAttestation::TAG, hostileVaruint(1) . "\x00")));
     })->throws(SerializationException::class, 'Trailing garbage');

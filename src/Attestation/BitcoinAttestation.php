@@ -20,10 +20,21 @@ final class BitcoinAttestation extends TimeAttestation
 {
     public const string TAG = "\x05\x88\x96\x0d\x73\xd7\x19\x01";
 
+    /**
+     * Highest block height a proof may name: 32 bits, as the reference
+     * implementation bounds it. Bitcoin will not get there for millennia, so
+     * anything above is malformed input rather than a future-proofing gap.
+     */
+    public const int MAX_HEIGHT = 0xFFFF_FFFF;
+
     public function __construct(public readonly int $blockHeight)
     {
         if ($blockHeight < 0) {
             throw new SerializationException(\sprintf('Bitcoin block height cannot be negative: %d', $blockHeight));
+        }
+
+        if ($blockHeight > self::MAX_HEIGHT) {
+            throw new SerializationException(\sprintf('Bitcoin block height too large: %d > %d', $blockHeight, self::MAX_HEIGHT));
         }
     }
 

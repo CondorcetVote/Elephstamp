@@ -29,6 +29,16 @@ it('round-trips a bitcoin attestation', function (): void {
         ->and($restored->blockHeight)->toBe(812_345);
 });
 
+it('rejects a negative bitcoin block height', function (): void {
+    new BitcoinAttestation(-1);
+})->throws(SerializationException::class, 'cannot be negative');
+
+it('accepts a bitcoin block height up to 32 bits and rejects anything above', function (): void {
+    expect(new BitcoinAttestation(BitcoinAttestation::MAX_HEIGHT)->blockHeight)->toBe(0xFFFF_FFFF);
+
+    new BitcoinAttestation(BitcoinAttestation::MAX_HEIGHT + 1);
+})->throws(SerializationException::class, 'too large');
+
 it('preserves an unknown attestation verbatim', function (): void {
     $serializer = new Serializer;
     // A tag this library does not know about, with an arbitrary payload.
