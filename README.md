@@ -331,6 +331,14 @@ proofs departs from the Python client on purpose.
   network-free calendar and chain for your own test suite, with an explicit
   pending → confirmed lifecycle.
 
+### One extension
+
+- **Keccak-256 as a file hash.** The format allows it, and the reference
+  client refuses it (an explicit error since `ots` 0.8.0, a crash before).
+  ElephStamp stamps, upgrades and verifies such proofs; `ots` will not read
+  them. Keep the default SHA-256 for anything the reference tooling must
+  read. See [LIBRARY.md](LIBRARY.md#keccak-256).
+
 ### Narrower scope
 
 No Git integration, no Litecoin or Ethereum verification (such attestations

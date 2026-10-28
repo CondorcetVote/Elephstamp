@@ -132,7 +132,7 @@ and the command exits `1` with each calendar's error.
 | --- | --- |
 | `-o, --output=PATH` | Write the proof here instead of `<file>.ots`. Single file or digest only. |
 | `--digest=HEX` | Timestamp a hex digest you already computed, instead of a file: 64 characters of SHA-256, or the length of the `--hash` algorithm. Defaults to writing `<hex>.ots`. |
-| `--hash=NAME` | Algorithm the proof commits to the file with: `sha256` (the default, and the only one the reference client produces), `sha1`, `ripemd160` or `keccak256`. Applies to files and to `--digest`; never guessed from a digest's length. `keccak256` reads the whole file into memory and is slow on large files. |
+| `--hash=NAME` | Algorithm the proof commits to the file with: `sha256` (the default, and the only one the reference client produces), `sha1`, `ripemd160` or `keccak256`. Applies to files and to `--digest`; never guessed from a digest's length. `keccak256` reads the whole file into memory, is slow on large files, and is an ElephStamp extension as a file hash: the reference client refuses such a proof. |
 | `--no-nonce` | Commit to the plain file hash. The calendars, and the sibling proofs of a batch, then learn the real digest. |
 | `-c, --calendar=URL` | Calendar to submit to. Repeatable; replaces the default list. Must be `https`. |
 | `-m, --required=N` | How many calendars must accept the stamp (the "m" of m-of-n). Default `2`, or `1` with a single calendar. |

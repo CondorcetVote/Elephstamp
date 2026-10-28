@@ -188,8 +188,9 @@ calendars. Never batch confidential files without the nonce.
 
 The `.ots` format names the algorithm a proof commits to a file with. The
 client hashes with **SHA-256**, like the reference client; the format also
-supports SHA-1, RIPEMD-160 and Keccak-256, which the reference tooling reads
-and verifies as well. Choose one with the `hashOperation` constructor
+supports SHA-1 and RIPEMD-160, which the reference tooling reads and verifies
+as well, and Keccak-256, which it does not (see
+[Keccak-256](#keccak-256)). Choose one with the `hashOperation` constructor
 argument. It applies to every source, `fromDigest()` included, and is written
 into the proof:
 
@@ -216,10 +217,14 @@ setting: a `Receipt` carries its own algorithm, `hashOperation()`.
 PHP's `hash('sha3-256')` pads differently and gives another digest. It is
 computed by the pure-PHP `kornrunner/keccak` package, so a `keccak256` edge
 anywhere in a proof, including on the way to a Bitcoin attestation, is
-verified and upgraded like any other. As a *file* hash it is there for
-interoperability: the package has no incremental interface, so the whole
-file is read into memory, at roughly a megabyte per second. Prefer SHA-256
-for anything large.
+verified and upgraded like any other. As a *file* hash it is an ElephStamp
+extension: the reference client refuses a proof whose file hash is
+`keccak256` (an explicit error since `ots` 0.8.0 /
+`python-opentimestamps` 0.5.0, a crash before), so such a proof is only
+read, upgraded and verified by ElephStamp. The package also has no
+incremental interface, so the whole file is read into memory, at roughly a
+megabyte per second. Prefer SHA-256 for anything the reference tooling
+must read, and for anything large.
 
 #### Custom hash operations
 
