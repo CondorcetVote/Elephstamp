@@ -143,7 +143,13 @@ final class HttpCalendarClient implements CalendarClient
         }
 
         try {
-            return CalendarResponse::success($calendarUrl, Timestamp::deserialize(new Deserializer($body), $expectedMsg));
+            $deserializer = new Deserializer($body);
+            $timestamp = Timestamp::deserialize($deserializer, $expectedMsg);
+            // A response is one timestamp and nothing else, as with an
+            // `.ots` file: bytes after it are a malformed answer.
+            $deserializer->assertEof();
+
+            return CalendarResponse::success($calendarUrl, $timestamp);
         } catch (SerializationException $exception) {
             return CalendarResponse::failure($calendarUrl, $exception);
         }

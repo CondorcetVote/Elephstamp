@@ -93,6 +93,20 @@ it('captures a malformed response body as a failure instead of throwing', functi
     expect($responses[0]->isFailure())->toBeTrue();
 });
 
+it('rejects a response carrying bytes after the timestamp', function (): void {
+    $commitment = hash('sha256', 'tip', binary: true);
+    $body = serializedTimestamp($commitment, static function (Timestamp $t): void {
+        $t->addAttestation(new BitcoinAttestation(700_000));
+    });
+
+    $client = new HttpCalendarClient(new MockHttpClient(new MockResponse($body . "\x00")));
+
+    $responses = $client->getTimestamps([['url' => 'https://a.example', 'commitment' => $commitment]]);
+
+    expect($responses[0]->isFailure())->toBeTrue()
+        ->and($responses[0]->error?->getMessage())->toContain('Trailing garbage');
+});
+
 it('captures a failure at request time without aborting the batch', function (): void {
     $digest = hash('sha256', 'x', binary: true);
     $body = serializedTimestamp($digest, static function (Timestamp $t): void {
