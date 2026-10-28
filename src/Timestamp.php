@@ -300,6 +300,14 @@ final class Timestamp
             }
 
             $op = Operation::fromTag($tag, $deserializer);
+
+            // A node never serializes the same operation twice, so a repeat
+            // is malformed input. Binding it would silently drop the first
+            // branch and whatever attestations it carried.
+            if (isset($self->ops[$op->comparisonKey()])) {
+                throw new SerializationException(\sprintf('Invalid timestamp: operation %s repeated within a node', $op->describe()));
+            }
+
             $child = self::deserialize($deserializer, self::childMsg($op, $initialMsg), $recursionLimit - 1);
             $self->setOp($op, $child);
         };

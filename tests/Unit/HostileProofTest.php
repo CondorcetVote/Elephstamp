@@ -230,6 +230,30 @@ describe('tags', function (): void {
         Receipt::fromBytes(hostileProof(hostilePending('a') . "\xff"));
     })->throws(SerializationException::class);
 
+    it('rejects a fork whose branches repeat the same operation instead of keeping only the last', function (): void {
+        // Two sha256 edges under one node: the reference serializer never
+        // writes this, and binding the second would silently drop the first
+        // branch and its attestation.
+        Receipt::fromBytes(hostileProof(hostileBranches([
+            "\x08" . hostilePending('https://a.example'),
+            "\x08" . hostilePending('https://b.example'),
+        ])));
+    })->throws(SerializationException::class, 'operation sha256 repeated');
+
+    it('rejects a repeated binary operation only when its argument is the same', function (): void {
+        $receipt = Receipt::fromBytes(hostileProof(hostileBranches([
+            hostileAppend('x') . hostilePending('https://a.example'),
+            hostileAppend('y') . hostilePending('https://b.example'),
+        ])));
+
+        expect($receipt->detachedTimestampFile()->timestamp->operations())->toHaveCount(2);
+
+        Receipt::fromBytes(hostileProof(hostileBranches([
+            hostileAppend('x') . hostilePending('https://a.example'),
+            hostileAppend('x') . hostilePending('https://b.example'),
+        ])));
+    })->throws(SerializationException::class, 'operation append');
+
     it('preserves an unknown attestation with a payload at the cap, byte for byte', function (): void {
         $tag = "\x11\x22\x33\x44\x55\x66\x77\x88";
         $bytes = hostileProof(hostileAttestation($tag, str_repeat("\xaa", TimeAttestation::MAX_PAYLOAD_SIZE)));
