@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-10-28
+
+This release aligns the parser with the fixes shipped in
+[python-opentimestamps v0.5.0](https://github.com/opentimestamps/python-opentimestamps/releases/tag/python-opentimestamps-v0.5.0)
+and [opentimestamps-client v0.8.0](https://github.com/opentimestamps/opentimestamps-client/releases/tag/opentimestamps-client-v0.8.0).
+Of the issues they fix, three applied here; the others (calendar redirects,
+whitelist bypass, unbounded varuints, oversized calendar responses, the Git
+GnuPG wrapper) were already guarded against or out of scope.
+
+### Security
+
+- **A repeated operation within a node is rejected.** A fork whose two
+  branches started with the same operation was parsed by binding the second
+  branch over the first, silently dropping the first branch and its
+  attestations. Such a proof is malformed (no serializer writes it) and now
+  raises a `SerializationException`.
+- **A calendar response must end with its timestamp.** Bytes after the
+  timestamp in a calendar answer are now a calendar failure, as they already
+  were in an `.ots` file.
+- **Bitcoin block heights are bounded to 32 bits.** A proof naming a larger
+  height raises a `SerializationException` (`BitcoinAttestation::MAX_HEIGHT`),
+  so ElephStamp and the reference client accept the same proofs.
+
+### Changed
+
+- Documentation: Keccak-256 as a *file* hash is now described as an
+  ElephStamp extension. The reference client refuses such proofs (an explicit
+  error since `ots` 0.8.0, a crash before); ElephStamp keeps reading,
+  upgrading and verifying them. See
+  [README](README.md#one-extension) and [LIBRARY.md](LIBRARY.md#keccak-256).
+
 ## [1.5.0] — 2026-09-25
 
 ### Added
@@ -225,7 +256,8 @@ First release.
   captured in its `CalendarResponse` and can never abort a batch.
 - GitHub Actions CI and Dependabot configuration.
 
-[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/CondorcetVote/Elephstamp/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/CondorcetVote/Elephstamp/compare/v1.2.0...v1.3.0
