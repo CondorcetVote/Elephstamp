@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [BitcoinAttestation](class_BitcoinAttestation.md)
 # Method deserializePayload()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Attestation/BitcoinAttestation.php#L49)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Attestation/BitcoinAttestation.php#L60)
 
 ```php
 public static function BitcoinAttestation::deserializePayload( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self

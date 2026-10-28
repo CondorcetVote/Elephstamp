@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method verify()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L497)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L571)
 
 ```php
 public function ElephStamp->verify( CondorcetVote\ElephStamp\Receipt $receipt, [ ?CondorcetVote\ElephStamp\FileToStamp $file = null, int $requiredConfirmations = 6 ] ): CondorcetVote\ElephStamp\Verify\VerificationReport

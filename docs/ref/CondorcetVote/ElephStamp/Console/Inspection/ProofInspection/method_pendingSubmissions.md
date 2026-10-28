@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ [ProofInspection](class_ProofInspection.md)
 # Method pendingSubmissions()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Inspection/ProofInspection.php#L39)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Inspection/ProofInspection.php#L41)
 
 ```php
 public function ProofInspection->pendingSubmissions( ): array

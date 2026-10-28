@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method upgradeWithReport()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L292)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L295)
 
 ```php
 public function ElephStamp->upgradeWithReport( CondorcetVote\ElephStamp\Receipt $receipt, [ bool $pollAll = false, bool $verify = true, int $requiredConfirmations = 6 ] ): CondorcetVote\ElephStamp\Upgrade\UpgradeReport

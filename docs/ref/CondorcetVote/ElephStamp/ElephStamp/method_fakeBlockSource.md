@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method fakeBlockSource()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L166)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L169)
 
 ```php
 public function ElephStamp->fakeBlockSource( ): CondorcetVote\ElephStamp\Verify\FakeBlockHeaderSource

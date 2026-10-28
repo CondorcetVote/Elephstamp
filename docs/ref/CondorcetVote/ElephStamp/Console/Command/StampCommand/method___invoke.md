@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ [StampCommand](class_StampCommand.md)
 # Method __invoke()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/StampCommand.php#L48)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/StampCommand.php#L54)
 
 ```php
-public function StampCommand->__invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, [ array $files = [], ?string $outputPath = null, ?string $digest = null, bool $noNonce = false, array $calendar = [], ?int $required = null, ?float $timeout = null, bool $force = false ] ): int
+public function StampCommand->__invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, [ array $files = [], ?string $outputPath = null, ?string $digest = null, ?string $hash = null, bool $noNonce = false, array $calendar = [], ?int $required = null, ?float $timeout = null, bool $force = false ] ): int
 ```
 
 ## Parameters
@@ -43,6 +43,14 @@ array $files = []
 ### **digest:**
 ```php
 ?string $digest = null
+```
+**Type:** `?string`
+
+
+
+### **hash:**
+```php
+?string $hash = null
 ```
 **Type:** `?string`
 

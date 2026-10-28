@@ -30,8 +30,10 @@ headers obtained from a {@see BlockHeaderSource}.
 | [stamp(...)](method_stamp.md) | _Timestamp a single file._ |
 | [stampMany(...)](method_stampMany.md) | _Timestamp several files at once, sharing a single calendar submission._ |
 | [upgrade(...)](method_upgrade.md) | _Query the calendars for confirmations and merge them into the receipt._ |
+| [upgradeMany(...)](method_upgradeMany.md) | _Upgrade several receipts in one pass, related or not._ |
 | [upgradeWithReport(...)](method_upgradeWithReport.md) | _Like {@see upgrade()}, but returns what happened with every calendar._ |
 | [verify(...)](method_verify.md) | _Check a receipt against the blockchain, through the configured block header source, and optionally that it is the proof of the given file._ |
+| [verifyMany(...)](method_verifyMany.md) | _Check several receipts against the blockchain in one pass, related or not, fetching the chain tip once and each block header once however many receipts name it. Each receipt gets its own report, align..._ |
 
 
 ## Public Representation
@@ -53,8 +55,10 @@ final class CondorcetVote\ElephStamp\ElephStamp
     public function stamp( CondorcetVote\ElephStamp\FileToStamp $file ): CondorcetVote\ElephStamp\Receipt;
     public function stampMany( [ CondorcetVote\ElephStamp\FileToStamp ...$files ] ): array;
     public function upgrade( CondorcetVote\ElephStamp\Receipt $receipt, [ bool $pollAll = false, bool $verify = true, int $requiredConfirmations = 6 ] ): bool;
+    public function upgradeMany( array $receipts, [ bool $pollAll = false, bool $verify = true, int $requiredConfirmations = 6 ] ): array;
     public function upgradeWithReport( CondorcetVote\ElephStamp\Receipt $receipt, [ bool $pollAll = false, bool $verify = true, int $requiredConfirmations = 6 ] ): CondorcetVote\ElephStamp\Upgrade\UpgradeReport;
     public function verify( CondorcetVote\ElephStamp\Receipt $receipt, [ ?CondorcetVote\ElephStamp\FileToStamp $file = null, int $requiredConfirmations = 6 ] ): CondorcetVote\ElephStamp\Verify\VerificationReport;
+    public function verifyMany( array $receipts, [ array $files = [], int $requiredConfirmations = 6 ] ): array;
 
 }
 ```
@@ -91,8 +95,10 @@ final class CondorcetVote\ElephStamp\ElephStamp
     public function stamp( CondorcetVote\ElephStamp\FileToStamp $file ): CondorcetVote\ElephStamp\Receipt;
     public function stampMany( [ CondorcetVote\ElephStamp\FileToStamp ...$files ] ): array;
     public function upgrade( CondorcetVote\ElephStamp\Receipt $receipt, [ bool $pollAll = false, bool $verify = true, int $requiredConfirmations = 6 ] ): bool;
+    public function upgradeMany( array $receipts, [ bool $pollAll = false, bool $verify = true, int $requiredConfirmations = 6 ] ): array;
     public function upgradeWithReport( CondorcetVote\ElephStamp\Receipt $receipt, [ bool $pollAll = false, bool $verify = true, int $requiredConfirmations = 6 ] ): CondorcetVote\ElephStamp\Upgrade\UpgradeReport;
     public function verify( CondorcetVote\ElephStamp\Receipt $receipt, [ ?CondorcetVote\ElephStamp\FileToStamp $file = null, int $requiredConfirmations = 6 ] ): CondorcetVote\ElephStamp\Verify\VerificationReport;
+    public function verifyMany( array $receipts, [ array $files = [], int $requiredConfirmations = 6 ] ): array;
 
 }
 ```

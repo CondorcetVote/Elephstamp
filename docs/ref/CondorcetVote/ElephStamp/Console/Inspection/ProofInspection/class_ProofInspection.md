@@ -12,6 +12,7 @@ Everything the CLI reports about a proof, extracted once from a {@see Receipt}.
 | [anchors(...)](property_anchors.md) | __ |
 | [receipt(...)](property_receipt.md) | __ |
 | [sizeInBytes(...)](property_sizeInBytes.md) | __ |
+| [submissionPoint(...)](property_submissionPoint.md) | __ |
 | [submissions(...)](property_submissions.md) | __ |
 | [unknownNotaries(...)](property_unknownNotaries.md) | __ |
 
@@ -33,11 +34,12 @@ final class CondorcetVote\ElephStamp\Console\Inspection\ProofInspection
     public protected(set) readonly array $anchors;
     public protected(set) readonly CondorcetVote\ElephStamp\Receipt $receipt;
     public protected(set) readonly int $sizeInBytes;
+    public protected(set) readonly ?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint $submissionPoint;
     public protected(set) readonly array $submissions;
     public protected(set) readonly array $unknownNotaries;
 
     // Methods
-    public function __construct( CondorcetVote\ElephStamp\Receipt $receipt, array $submissions, array $anchors, array $unknownNotaries, int $sizeInBytes );
+    public function __construct( CondorcetVote\ElephStamp\Receipt $receipt, array $submissions, array $anchors, array $unknownNotaries, int $sizeInBytes, [ ?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint $submissionPoint = null ] );
     public function bitcoinBlockHeight( ): ?int;
     public function pendingSubmissions( ): array;
     public function status( ): CondorcetVote\ElephStamp\Status;
@@ -54,11 +56,12 @@ final class CondorcetVote\ElephStamp\Console\Inspection\ProofInspection
     public protected(set) readonly array $anchors;
     public protected(set) readonly CondorcetVote\ElephStamp\Receipt $receipt;
     public protected(set) readonly int $sizeInBytes;
+    public protected(set) readonly ?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint $submissionPoint;
     public protected(set) readonly array $submissions;
     public protected(set) readonly array $unknownNotaries;
 
     // Methods
-    public function __construct( CondorcetVote\ElephStamp\Receipt $receipt, array $submissions, array $anchors, array $unknownNotaries, int $sizeInBytes );
+    public function __construct( CondorcetVote\ElephStamp\Receipt $receipt, array $submissions, array $anchors, array $unknownNotaries, int $sizeInBytes, [ ?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint $submissionPoint = null ] );
     public function bitcoinBlockHeight( ): ?int;
     public function pendingSubmissions( ): array;
     public function status( ): CondorcetVote\ElephStamp\Status;

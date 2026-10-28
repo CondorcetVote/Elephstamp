@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [HashOperation](class_HashOperation.md)
 # Method hashData()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Operation/HashOperation.php#L36)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Operation/HashOperation.php#L58)
 
 ```php
-final public function HashOperation->hashData( string $data ): string
+abstract public function HashOperation->hashData( string $data ): string
 ```
 
 ## Description

@@ -22,7 +22,9 @@ detached timestamp.
 | ------------- | ------------- |
 | [deserialize(...)](../Operation/method_deserialize.md) | _Read the operation that follows the current cursor position._ |
 | [deserializeHash(...)](method_deserializeHash.md) | _Read a cryptographic hash operation; reject non-hash operations._ |
+| [fromName(...)](method_fromName.md) | _The hash operation with the given name, as {@see describe()} returns it._ |
 | [fromTag(...)](../Operation/method_fromTag.md) | _Build the operation identified by $tag, reading any argument it needs._ |
+| [names(...)](method_names.md) | _The hash operations a detached timestamp can be built with, by name as {@see describe()} returns it; the default one first._ |
 
 ### Public Methods
 | Method Name | Description |
@@ -31,9 +33,9 @@ detached timestamp.
 | [comparisonKey(...)](../Operation/method_comparisonKey.md) | _Key used to order operations deterministically within a timestamp._ |
 | [describe(...)](../Operation/method_describe.md) | _Human-readable label for the operation, used when describing a proof._ |
 | [digestLength(...)](method_digestLength.md) | _Length of the digest this operation produces, in bytes._ |
-| [hashChunks(...)](method_hashChunks.md) | _Hash a sequence of chunks incrementally, in bounded memory._ |
+| [hashChunks(...)](method_hashChunks.md) | _Hash a sequence of chunks as one message._ |
 | [hashData(...)](method_hashData.md) | _Hash a whole in-memory payload._ |
-| [hashStream(...)](method_hashStream.md) | _Hash a stream from its current position to its end, in bounded memory._ |
+| [hashStream(...)](method_hashStream.md) | _Hash a stream from its current position to its end._ |
 | [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](../Operation/method_serialize.md) | __ |
 | [tag(...)](../Operation/method_tag.md) | _The one-byte tag identifying this operation in the binary format._ |
@@ -50,13 +52,15 @@ abstract class CondorcetVote\ElephStamp\Operation\HashOperation extends Condorce
     // Static Methods
     final public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function deserializeHash( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function fromName( string $name ): self;
     final public static function fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function names( ): array;
 
     // Methods
     abstract public function digestLength( ): int;
-    final public function hashChunks( iterable $chunks ): string;
-    final public function hashData( string $data ): string;
-    final public function hashStream( $stream ): string;
+    abstract public function hashChunks( iterable $chunks ): string;
+    abstract public function hashData( string $data ): string;
+    abstract public function hashStream( $stream ): string;
 
     // Inherited Methods
     final public function Operation->apply( string $message ): string;
@@ -80,13 +84,15 @@ abstract class CondorcetVote\ElephStamp\Operation\HashOperation extends Condorce
     // Static Methods
     final public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function deserializeHash( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function fromName( string $name ): self;
     final public static function fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function names( ): array;
 
     // Methods
     abstract public function digestLength( ): int;
-    final public function hashChunks( iterable $chunks ): string;
-    final public function hashData( string $data ): string;
-    final public function hashStream( $stream ): string;
+    abstract public function hashChunks( iterable $chunks ): string;
+    abstract public function hashData( string $data ): string;
+    abstract public function hashStream( $stream ): string;
 
     // Inherited Methods
     final public function Operation->apply( string $message ): string;

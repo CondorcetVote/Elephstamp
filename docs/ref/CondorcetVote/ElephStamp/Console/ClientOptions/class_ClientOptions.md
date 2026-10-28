@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ **ClientOptions**
 # Class ClientOptions
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L18)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L19)
 
 ## Description
 Calendar-related settings collected from the command line.
@@ -20,6 +20,7 @@ default", so the same object serves both stamping and upgrading commands.
 | [calendarUrls(...)](property_calendarUrls.md) | __ |
 | [explorers(...)](property_explorers.md) | __ |
 | [explorerUrls(...)](property_explorerUrls.md) | __ |
+| [hashOperation(...)](property_hashOperation.md) | __ |
 | [node(...)](property_node.md) | __ |
 | [nodeCookieFile(...)](property_nodeCookieFile.md) | __ |
 | [nodePassword(...)](property_nodePassword.md) | __ |
@@ -47,6 +48,7 @@ final class CondorcetVote\ElephStamp\Console\ClientOptions
     public protected(set) readonly array $calendarUrls;
     public protected(set) readonly array $explorers;
     public protected(set) readonly array $explorerUrls;
+    public protected(set) readonly ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation;
     public protected(set) readonly ?string $node;
     public protected(set) readonly ?string $nodeCookieFile;
     public protected(set) readonly ?string $nodePassword;
@@ -60,7 +62,7 @@ final class CondorcetVote\ElephStamp\Console\ClientOptions
     public static function explorersFromNames( array $names ): array;
 
     // Methods
-    public function __construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [], ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookieFile = null ] );
+    public function __construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [], ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookieFile = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null ] );
     public function resolvedCalendarUrls( ): array;
     public function resolvedExplorers( ): array;
     public function resolvedWhitelist( ): array;
@@ -77,6 +79,7 @@ final class CondorcetVote\ElephStamp\Console\ClientOptions
     public protected(set) readonly array $calendarUrls;
     public protected(set) readonly array $explorers;
     public protected(set) readonly array $explorerUrls;
+    public protected(set) readonly ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation;
     public protected(set) readonly ?string $node;
     public protected(set) readonly ?string $nodeCookieFile;
     public protected(set) readonly ?string $nodePassword;
@@ -90,7 +93,7 @@ final class CondorcetVote\ElephStamp\Console\ClientOptions
     public static function explorersFromNames( array $names ): array;
 
     // Methods
-    public function __construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [], ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookieFile = null ] );
+    public function __construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [], ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookieFile = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null ] );
     public function resolvedCalendarUrls( ): array;
     public function resolvedExplorers( ): array;
     public function resolvedWhitelist( ): array;

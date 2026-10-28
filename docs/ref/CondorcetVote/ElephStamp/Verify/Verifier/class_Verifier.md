@@ -23,6 +23,7 @@ explorer is a third party, a node you run is not.
 | [__construct(...)](method___construct.md) | __ |
 | [checkAnchors(...)](method_checkAnchors.md) | _Check Bitcoin attestations against the blocks they name, whatever proof they come from: a receipt, or a calendar's answer about to be merged into one._ |
 | [verify(...)](method_verify.md) | _Verify a receipt, and optionally that it is the proof of a given file._ |
+| [verifyMany(...)](method_verifyMany.md) | _Verify several receipts in one pass, related or not._ |
 
 
 ## Public Representation
@@ -36,6 +37,7 @@ final class CondorcetVote\ElephStamp\Verify\Verifier
     public function __construct( CondorcetVote\ElephStamp\Verify\BlockHeaderSource $source, [ int $requiredConfirmations = 6 ] );
     public function checkAnchors( array $anchors ): array;
     public function verify( CondorcetVote\ElephStamp\Receipt $receipt, [ ?CondorcetVote\ElephStamp\FileToStamp $file = null ] ): CondorcetVote\ElephStamp\Verify\VerificationReport;
+    public function verifyMany( array $receipts, [ array $files = [] ] ): array;
 
 }
 ```
@@ -55,6 +57,7 @@ final class CondorcetVote\ElephStamp\Verify\Verifier
     public function __construct( CondorcetVote\ElephStamp\Verify\BlockHeaderSource $source, [ int $requiredConfirmations = 6 ] );
     public function checkAnchors( array $anchors ): array;
     public function verify( CondorcetVote\ElephStamp\Receipt $receipt, [ ?CondorcetVote\ElephStamp\FileToStamp $file = null ] ): CondorcetVote\ElephStamp\Verify\VerificationReport;
+    public function verifyMany( array $receipts, [ array $files = [] ] ): array;
 
 }
 ```

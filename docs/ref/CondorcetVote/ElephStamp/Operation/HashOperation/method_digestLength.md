@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [HashOperation](class_HashOperation.md)
 # Method digestLength()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Operation/HashOperation.php#L23)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Operation/HashOperation.php#L50)
 
 ```php
 abstract public function HashOperation->digestLength( ): int

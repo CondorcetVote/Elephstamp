@@ -18,7 +18,9 @@ RIPEMD-160.
 | ------------- | ------------- |
 | [deserialize(...)](../Operation/method_deserialize.md) | _Read the operation that follows the current cursor position._ |
 | [deserializeHash(...)](../HashOperation/method_deserializeHash.md) | _Read a cryptographic hash operation; reject non-hash operations._ |
+| [fromName(...)](../HashOperation/method_fromName.md) | _The hash operation with the given name, as {@see describe()} returns it._ |
 | [fromTag(...)](../Operation/method_fromTag.md) | _Build the operation identified by $tag, reading any argument it needs._ |
+| [names(...)](../HashOperation/method_names.md) | _The hash operations a detached timestamp can be built with, by name as {@see describe()} returns it; the default one first._ |
 
 ### Public Methods
 | Method Name | Description |
@@ -27,9 +29,9 @@ RIPEMD-160.
 | [comparisonKey(...)](../Operation/method_comparisonKey.md) | _Key used to order operations deterministically within a timestamp._ |
 | [describe(...)](method_describe.md) | __ |
 | [digestLength(...)](method_digestLength.md) | __ |
-| [hashChunks(...)](../HashOperation/method_hashChunks.md) | _Hash a sequence of chunks incrementally, in bounded memory._ |
-| [hashData(...)](../HashOperation/method_hashData.md) | _Hash a whole in-memory payload._ |
-| [hashStream(...)](../HashOperation/method_hashStream.md) | _Hash a stream from its current position to its end, in bounded memory._ |
+| [hashChunks(...)](../NativeHashOperation/method_hashChunks.md) | __ |
+| [hashData(...)](../NativeHashOperation/method_hashData.md) | __ |
+| [hashStream(...)](../NativeHashOperation/method_hashStream.md) | __ |
 | [isComputable(...)](../Operation/method_isComputable.md) | _Whether this library can compute the operation's result._ |
 | [serialize(...)](../Operation/method_serialize.md) | __ |
 | [tag(...)](method_tag.md) | __ |
@@ -37,7 +39,7 @@ RIPEMD-160.
 
 ## Public Representation
 ```php
-final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\ElephStamp\Operation\HashOperation
+final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\ElephStamp\Operation\NativeHashOperation
 {
     // Constants
     public const string TAG = '';
@@ -48,7 +50,9 @@ final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\E
     // Static Methods
     final public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function deserializeHash( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function fromName( string $name ): self;
     final public static function fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function names( ): array;
 
     // Methods
     public function describe( ): string;
@@ -58,9 +62,9 @@ final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\E
     // Inherited Methods
     final public function Operation->apply( string $message ): string;
     public function Operation->comparisonKey( ): string;
-    final public function HashOperation->hashChunks( iterable $chunks ): string;
-    final public function HashOperation->hashData( string $data ): string;
-    final public function HashOperation->hashStream( $stream ): string;
+    final public function NativeHashOperation->hashChunks( iterable $chunks ): string;
+    final public function NativeHashOperation->hashData( string $data ): string;
+    final public function NativeHashOperation->hashStream( $stream ): string;
     public function Operation->isComputable( ): bool;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
@@ -69,7 +73,7 @@ final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\E
 
 ## Full Representation
 ```php
-final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\ElephStamp\Operation\HashOperation
+final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\ElephStamp\Operation\NativeHashOperation
 {
     // Constants
     public const string TAG = '';
@@ -80,7 +84,9 @@ final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\E
     // Static Methods
     final public static function deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function deserializeHash( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function fromName( string $name ): self;
     final public static function fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function names( ): array;
 
     // Methods
     public function describe( ): string;
@@ -92,11 +98,13 @@ final class CondorcetVote\ElephStamp\Operation\Ripemd160 extends CondorcetVote\E
     public function Operation->comparisonKey( ): string;
     final public static function Operation::deserialize( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
     final public static function HashOperation::deserializeHash( CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
+    public static function HashOperation::fromName( string $name ): self;
     final public static function Operation::fromTag( string $tag, CondorcetVote\ElephStamp\Serialization\Deserializer $deserializer ): self;
-    final public function HashOperation->hashChunks( iterable $chunks ): string;
-    final public function HashOperation->hashData( string $data ): string;
-    final public function HashOperation->hashStream( $stream ): string;
+    final public function NativeHashOperation->hashChunks( iterable $chunks ): string;
+    final public function NativeHashOperation->hashData( string $data ): string;
+    final public function NativeHashOperation->hashStream( $stream ): string;
     public function Operation->isComputable( ): bool;
+    public static function HashOperation::names( ): array;
     public function Operation->serialize( CondorcetVote\ElephStamp\Serialization\Serializer $serializer ): void;
 
 }

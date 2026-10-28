@@ -15,6 +15,7 @@ reports the height so callers can look it up with the tool of their choice.
 ### Public Constants
 | Constant Name | Signature | Description |
 | ------------- | ------------- | ------------- |
+| MAX_HEIGHT | `public const int MAX_HEIGHT = 4294967295` | _Highest block height a proof may name: 32 bits, as the reference implementation bounds it. Bitcoin will not get there for millennia, so anything above is malformed input rather than a future-proofing ..._ |
 | MAX_PAYLOAD_SIZE | `public const int MAX_PAYLOAD_SIZE = 8192` | _Maximum size of a serialized attestation payload, in bytes._ |
 | TAG | `public const string TAG = 'ˆ–s×'` | __ |
 | TAG_SIZE | `public const int TAG_SIZE = 8` | _Length of an attestation tag, in bytes._ |
@@ -46,6 +47,7 @@ reports the height so callers can look it up with the tool of their choice.
 final class CondorcetVote\ElephStamp\Attestation\BitcoinAttestation extends CondorcetVote\ElephStamp\Attestation\TimeAttestation
 {
     // Constants
+    public const int MAX_HEIGHT = 4294967295;
     public const string TAG = 'ˆ–s×';
     // Inherited Constants
     public const int TimeAttestation::MAX_PAYLOAD_SIZE = 8192;
@@ -76,6 +78,7 @@ final class CondorcetVote\ElephStamp\Attestation\BitcoinAttestation extends Cond
 final class CondorcetVote\ElephStamp\Attestation\BitcoinAttestation extends CondorcetVote\ElephStamp\Attestation\TimeAttestation
 {
     // Constants
+    public const int MAX_HEIGHT = 4294967295;
     public const string TAG = 'ˆ–s×';
     // Inherited Constants
     public const int TimeAttestation::MAX_PAYLOAD_SIZE = 8192;

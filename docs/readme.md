@@ -46,6 +46,7 @@
 | [Application](ref/CondorcetVote/ElephStamp/Console/Application/class_Application.md) | _The elephstamp command-line tool._ |
 | [ClientOptions](ref/CondorcetVote/ElephStamp/Console/ClientOptions/class_ClientOptions.md) | _Calendar-related settings collected from the command line._ |
 | [Formatter](ref/CondorcetVote/ElephStamp/Console/Formatter/class_Formatter.md) | _Small presentation helpers shared by the commands._ |
+| [HexDigest](ref/CondorcetVote/ElephStamp/Console/HexDigest/class_HexDigest.md) | _Parses a digest given on the command line as hexadecimal._ |
 | [HttpClientFactory](ref/CondorcetVote/ElephStamp/Console/HttpClientFactory/class_HttpClientFactory.md) | _The production factory: talks to real calendars over HTTPS._ |
 
 
@@ -66,6 +67,7 @@
 | [CalendarSubmission](ref/CondorcetVote/ElephStamp/Console/Inspection/CalendarSubmission/class_CalendarSubmission.md) | _One pending attestation of a proof, seen from the calendar's point of view._ |
 | [ProofInspection](ref/CondorcetVote/ElephStamp/Console/Inspection/ProofInspection/class_ProofInspection.md) | _Everything the CLI reports about a proof, extracted once from a {@see Receipt}._ |
 | [ProofInspector](ref/CondorcetVote/ElephStamp/Console/Inspection/ProofInspector/class_ProofInspector.md) | _Walks a proof tree and gathers what each calendar submission is up to._ |
+| [SubmissionPoint](ref/CondorcetVote/ElephStamp/Console/Inspection/SubmissionPoint/class_SubmissionPoint.md) | _Where, in a proof tree, the client handed its digest over to the calendars._ |
 | [UnknownNotary](ref/CondorcetVote/ElephStamp/Console/Inspection/UnknownNotary/class_UnknownNotary.md) | _An attestation of a type this library does not understand._ |
 
 
@@ -92,7 +94,8 @@
 | [BinaryOperation](ref/CondorcetVote/ElephStamp/Operation/BinaryOperation/class_BinaryOperation.md) | _An operation that combines the message with a fixed argument (append/prepend)._ |
 | [HashOperation](ref/CondorcetVote/ElephStamp/Operation/HashOperation/class_HashOperation.md) | _A cryptographic hash operation._ |
 | [Hexlify](ref/CondorcetVote/ElephStamp/Operation/Hexlify/class_Hexlify.md) | _Convert the message to its lower-case hexadecimal representation._ |
-| [Keccak256](ref/CondorcetVote/ElephStamp/Operation/Keccak256/class_Keccak256.md) | _Keccak-256, as used by Ethereum attestations._ |
+| [Keccak256](ref/CondorcetVote/ElephStamp/Operation/Keccak256/class_Keccak256.md) | _Keccak-256, the original Keccak as used by Ethereum._ |
+| [NativeHashOperation](ref/CondorcetVote/ElephStamp/Operation/NativeHashOperation/class_NativeHashOperation.md) | _A hash operation computed by PHP's {@see hash()} extension._ |
 | [Operation](ref/CondorcetVote/ElephStamp/Operation/Operation/class_Operation.md) | _A single edge in a timestamp proof tree._ |
 | [Prepend](ref/CondorcetVote/ElephStamp/Operation/Prepend/class_Prepend.md) | _Prepend a fixed prefix to the message._ |
 | [Reverse](ref/CondorcetVote/ElephStamp/Operation/Reverse/class_Reverse.md) | _Reverse the bytes of the message._ |

@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](class_ElephStamp.md)
 # Method fake()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L141)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/ElephStamp.php#L144)
 
 ```php
 public static function ElephStamp::fake( [ ?CondorcetVote\ElephStamp\Calendar\FakeCalendarClient $calendar = null, ?CondorcetVote\ElephStamp\Verify\FakeBlockHeaderSource $blockHeaderSource = null ] ): self

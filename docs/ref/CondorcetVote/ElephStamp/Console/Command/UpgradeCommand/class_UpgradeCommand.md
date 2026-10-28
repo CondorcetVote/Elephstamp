@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ **UpgradeCommand**
 # Class UpgradeCommand
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/UpgradeCommand.php#L61)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/UpgradeCommand.php#L65)
 ## Elements
 
 ### Public Constants

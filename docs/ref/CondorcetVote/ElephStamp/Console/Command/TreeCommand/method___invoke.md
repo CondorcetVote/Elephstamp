@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ [TreeCommand](class_TreeCommand.md)
 # Method __invoke()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/TreeCommand.php#L38)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/TreeCommand.php#L44)
 
 ```php
 public function TreeCommand->__invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, array $receipts, [ bool $plain = false, bool $noHashes = false ] ): int

@@ -56,7 +56,7 @@ a single calendar is configured
 ```
 **Type:** `?array`
 
-host patterns an upgrade may contact (defaults to {@see \CondorcetVote\ElephStamp\DEFAULT_UPGRADE_WHITELIST}); pass your own when using private calendars
+host patterns an upgrade may contact (defaults to {@see \CondorcetVote\ElephStamp\DEFAULT_UPGRADE_WHITELIST}); the $calendarUrls are always allowed on top of them
 
 ### **blockHeaderSource:**
 ```php

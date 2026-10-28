@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ [ProofInspection](class_ProofInspection.md)
 # Method __construct()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Inspection/ProofInspection.php#L21)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Inspection/ProofInspection.php#L22)
 
 ```php
-public function ProofInspection->__construct( CondorcetVote\ElephStamp\Receipt $receipt, array $submissions, array $anchors, array $unknownNotaries, int $sizeInBytes )
+public function ProofInspection->__construct( CondorcetVote\ElephStamp\Receipt $receipt, array $submissions, array $anchors, array $unknownNotaries, int $sizeInBytes, [ ?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint $submissionPoint = null ] )
 ```
 
 ## Parameters
@@ -47,3 +47,11 @@ int $sizeInBytes
 **Type:** `int`
 
 size of the serialized `.ots`
+
+### **submissionPoint:**
+```php
+?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint $submissionPoint = null
+```
+**Type:** [`?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint`](../SubmissionPoint/class_SubmissionPoint.md)
+
+the digest handed over to the calendars; null when the proof layout does not show it

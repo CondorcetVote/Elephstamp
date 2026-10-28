@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ **InfoCommand**
 # Class InfoCommand
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/InfoCommand.php#L45)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/InfoCommand.php#L47)
 ## Elements
 
 ### Public Methods
@@ -32,6 +32,7 @@ final class CondorcetVote\ElephStamp\Console\Command\InfoCommand
     private static function siblingCandidate( string $receiptPath ): ?string;
     private static function siblingFile( string $receiptPath ): ?string;
     private static function statusLine( CondorcetVote\ElephStamp\Console\Inspection\ProofInspection $inspection ): string;
+    private static function submissionLine( ?CondorcetVote\ElephStamp\Console\Inspection\SubmissionPoint $point ): string;
     private static function submissionState( CondorcetVote\ElephStamp\Console\Inspection\CalendarSubmission $submission, CondorcetVote\ElephStamp\Status $status ): string;
     private static function toArray( string $path, CondorcetVote\ElephStamp\Console\Inspection\ProofInspection $inspection, ?string $original, ?bool $matches ): array;
 

@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ **StampCommand**
 # Class StampCommand
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/StampCommand.php#L40)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/StampCommand.php#L46)
 ## Elements
 
 ### Public Methods
@@ -17,7 +17,7 @@ final class CondorcetVote\ElephStamp\Console\Command\StampCommand
 
     // Methods
     public function __construct( CondorcetVote\ElephStamp\Console\ClientFactory $clientFactory );
-    public function __invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, [ array $files = [], ?string $outputPath = null, ?string $digest = null, bool $noNonce = false, array $calendar = [], ?int $required = null, ?float $timeout = null, bool $force = false ] ): int;
+    public function __invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, [ array $files = [], ?string $outputPath = null, ?string $digest = null, ?string $hash = null, bool $noNonce = false, array $calendar = [], ?int $required = null, ?float $timeout = null, bool $force = false ] ): int;
 
 }
 ```
@@ -31,12 +31,12 @@ final class CondorcetVote\ElephStamp\Console\Command\StampCommand
     private readonly CondorcetVote\ElephStamp\Console\ClientFactory $clientFactory;
 
     // Static Methods
-    private static function fromDigest( string $digest, ?string $outputPath ): array;
+    private static function fromDigest( string $digest, CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation, ?string $outputPath ): array;
     private static function fromFiles( array $files, ?string $outputPath ): array;
 
     // Methods
     public function __construct( CondorcetVote\ElephStamp\Console\ClientFactory $clientFactory );
-    public function __invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, [ array $files = [], ?string $outputPath = null, ?string $digest = null, bool $noNonce = false, array $calendar = [], ?int $required = null, ?float $timeout = null, bool $force = false ] ): int;
+    public function __invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, [ array $files = [], ?string $outputPath = null, ?string $digest = null, ?string $hash = null, bool $noNonce = false, array $calendar = [], ?int $required = null, ?float $timeout = null, bool $force = false ] ): int;
 
 }
 ```

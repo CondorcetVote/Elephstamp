@@ -9,7 +9,8 @@
 | [BinaryOperation](BinaryOperation/class_BinaryOperation.md) | _An operation that combines the message with a fixed argument (append/prepend)._ |
 | [HashOperation](HashOperation/class_HashOperation.md) | _A cryptographic hash operation._ |
 | [Hexlify](Hexlify/class_Hexlify.md) | _Convert the message to its lower-case hexadecimal representation._ |
-| [Keccak256](Keccak256/class_Keccak256.md) | _Keccak-256, as used by Ethereum attestations._ |
+| [Keccak256](Keccak256/class_Keccak256.md) | _Keccak-256, the original Keccak as used by Ethereum._ |
+| [NativeHashOperation](NativeHashOperation/class_NativeHashOperation.md) | _A hash operation computed by PHP's {@see hash()} extension._ |
 | [Operation](Operation/class_Operation.md) | _A single edge in a timestamp proof tree._ |
 | [Prepend](Prepend/class_Prepend.md) | _Prepend a fixed prefix to the message._ |
 | [Reverse](Reverse/class_Reverse.md) | _Reverse the bytes of the message._ |

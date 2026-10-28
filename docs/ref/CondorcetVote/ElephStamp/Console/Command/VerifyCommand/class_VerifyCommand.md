@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ **VerifyCommand**
 # Class VerifyCommand
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/VerifyCommand.php#L53)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/VerifyCommand.php#L57)
 ## Elements
 
 ### Public Constants
@@ -44,7 +44,7 @@ final class CondorcetVote\ElephStamp\Console\Command\VerifyCommand
     private static function mismatchWarning( CondorcetVote\ElephStamp\Verify\VerificationReport $report ): ?string;
     private static function originalLine( ?string $original, ?bool $matches ): string;
     private static function result( CondorcetVote\ElephStamp\Verify\AnchorVerification $verification, int $required ): string;
-    private static function subject( string $receiptPath, ?string $file, ?string $digest ): array;
+    private static function subject( string $receiptPath, CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation, ?string $file, ?string $digest ): array;
     private static function toArray( string $path, CondorcetVote\ElephStamp\Receipt $receipt, CondorcetVote\ElephStamp\Verify\VerificationReport $report, ?string $original ): array;
 
     // Methods

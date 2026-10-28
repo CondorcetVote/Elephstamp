@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [BitcoinAttestation](class_BitcoinAttestation.md)
 # Method compareTo()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Attestation/BitcoinAttestation.php#L40)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Attestation/BitcoinAttestation.php#L51)
 
 ```php
 public function BitcoinAttestation->compareTo( parent $other ): int

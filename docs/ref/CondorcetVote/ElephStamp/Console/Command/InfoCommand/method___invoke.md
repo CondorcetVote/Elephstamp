@@ -1,6 +1,6 @@
 > CondorcetVote \ [ElephStamp](../../../readme.md) \ [Console](../../readme.md) \ [InfoCommand](class_InfoCommand.md)
 # Method __invoke()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/InfoCommand.php#L51)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/Command/InfoCommand.php#L53)
 
 ```php
 public function InfoCommand->__invoke( Symfony\Component\Console\Style\SymfonyStyle $io, Symfony\Component\Console\Output\OutputInterface $output, array $receipts, [ ?string $file = null, bool $json = false, array $whitelist = [], bool $noDefaultWhitelist = false ] ): int

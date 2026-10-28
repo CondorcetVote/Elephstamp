@@ -1,9 +1,9 @@
 > CondorcetVote \ [ElephStamp](../../readme.md) \ [ClientOptions](class_ClientOptions.md)
 # Method __construct()
-> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L33)
+> [Read it at source](https://github.com/CondorcetVote/ElephStamp/blob/main/src/src/Console/ClientOptions.php#L35)
 
 ```php
-public function ClientOptions->__construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [], ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookieFile = null ] )
+public function ClientOptions->__construct( [ array $calendarUrls = [], ?int $requiredCalendars = null, array $whitelist = [], bool $useDefaultWhitelist = true, ?float $timeout = null, array $explorers = [], array $explorerUrls = [], ?string $node = null, ?string $nodeUser = null, ?string $nodePassword = null, ?string $nodeCookieFile = null, ?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null ] )
 ```
 
 ## Parameters
@@ -95,3 +95,11 @@ RPC password for $node, with $nodeUser
 **Type:** `?string`
 
 Bitcoin Core `.cookie` file holding the RPC credentials, instead of a user and password
+
+### **hashOperation:**
+```php
+?CondorcetVote\ElephStamp\Operation\HashOperation $hashOperation = null
+```
+**Type:** [`?CondorcetVote\ElephStamp\Operation\HashOperation`](../../Operation/HashOperation/class_HashOperation.md)
+
+the hash a stamp commits to a file with; null for the library default, SHA-256
